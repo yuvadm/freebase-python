@@ -1,25 +1,26 @@
+#
+#  rison for python (parser only so far)
+#    see http://mjtemplate.org/examples/rison.html for more info
+#
 
+######################################################################
 #
-# based on javascript openlaszlo-json
-#
-# Author: Oliver Steele
-# Copyright: Copyright 2006 Oliver Steele.  All rights reserved.
-# Homepage: http:#osteele.com/sources/openlaszlo/json
-# License: MIT License.
-# Version: 1.0
+# the rison parser is based on javascript openlaszlo-json:
+#    Author: Oliver Steele
+#    Copyright: Copyright 2006 Oliver Steele.  All rights reserved.
+#    Homepage: http:#osteele.com/sources/openlaszlo/json
+#    License: MIT License.
+#    Version: 1.0
 #
 
 # hacked by nix for use in uris
 # ported to python by nix
 #
-
-
-
-#
 #  TODO
 #
 #  switch to unicode
-#  fall through to simplejson if first char is not in '!('
+#  fall through to simplejson if first char is not in '!(' -
+#   this allows code to use just one parser
 #
 
 
