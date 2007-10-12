@@ -46,6 +46,10 @@
 
 import os, sys, re
 
+import urllib
+def uri_encode_var(v):
+    return urllib.quote(v, safe="-_.~!$&'()*+,;=:/?[]#@")
+
 class URITemplate(object):
     VARREF = re.compile(r'\{([0-9a-zA-Z_]+)\}')
 
@@ -74,8 +78,7 @@ class URITemplate(object):
     def run (self, **args):
         def repl(m):
             key = m.group(1)
-            return args[key]
-        
+            return uri_encode_var(args.get(key, ''))
         uri = self.VARREF.sub(repl,self.template)
 
         # XXX for testing, compare this to args array
@@ -92,5 +95,19 @@ class URITemplate(object):
         return dict(zip(self.params, m.groups()))
     
 if __name__ == '__main__':
-    ut = URITemplate('xxx{key}yyy')
-    print ut.run(key='ABC')
+    import urllib2, simplejson
+    fp = urllib2.urlopen('http://search.cpan.org/src/BRICAS/URI-Template-0.09/t/data/spec.json')
+    testsuite = simplejson.loads(fp.read())
+    vars = dict([(k.encode('utf-8'),v) for k,v in testsuite['variables'].items()])
+    nsucceed = 0
+    nfail = 0
+    for test in testsuite['tests']:
+        ut = URITemplate(test['template'])
+        uri = ut.run(**vars)
+        if uri != test['expected']:
+            print 'FAILED %r expected %r' % (uri, test['expected'])
+            print ' vars: %r' % (vars,)
+            nfail += 1
+        else:
+            nsucceed += 1
+    print 'tests: %d succeeded, %d failed' % (nsucceed, nfail)
