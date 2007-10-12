@@ -38,6 +38,9 @@
 #
 #
 
+__all__ = ['MetawebError', 'MetawebSession', 'HTTPMetawebSession', 'attrdict']
+__version__ = '0.1'
+
 import os, sys, re
 import urllib2
 import cookielib
@@ -49,14 +52,15 @@ import socket
 import logging
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
-console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-# add the handler to the root logger
-log.addHandler(console)
+log.addHandler(logging.StreamHandler())
 
-__all__ = ['MetawebError', 'MetawebSession', 'HTTPMetawebSession', 'attrdict']
-
-__version__ = '0.1'
+try:
+    import httplib2
+    from httplib2cookie import CookiefulHttp
+except ImportError:
+    httplib2 = None
+    CookiefulHttp = None
+    log.info('freebase.api: you can install httplib2 for better performance')
 
 import simplejson.encoder
 simplejson.JSONEncoder.item_separator = ','
@@ -116,6 +120,12 @@ class MetawebSession(object):
     # interface definition here...
     
 
+# from httplib2
+NORMALIZE_SPACE = re.compile(r'(?:\r\n)?[ \t]+')
+def _normalize_headers(headers):
+    return dict([ (key.lower(), NORMALIZE_SPACE.sub(value, ' ').strip())  for (key, value) in headers.iteritems()])
+
+
 class HTTPMetawebSession(MetawebSession):
     """
     a MetawebSession is a request/response queue.
@@ -148,6 +158,12 @@ class HTTPMetawebSession(MetawebSession):
         if prev_session:
             self.service_url = prev.service_url
 
+        if CookiefulHttp is not None:
+            self.httpclient = CookiefulHttp(cookiejar=self._cookies)
+        else:
+            cookiespy = urllib2.HTTPCookieProcessor(self._cookies)
+            self.opener = urllib2.build_opener(cookiespy)
+
 
     def _httpreq(self, service_path, method='GET', body=None, form=None,
                  headers=None):
@@ -175,15 +191,15 @@ class HTTPMetawebSession(MetawebSession):
         url = self.service_url + service_path
 
         if headers is None:
-            headers = []
+            headers = {}
+        else:
+            headers = _normalize_headers(headers)
 
         # XXX This is a lousy way to parse Content-Type, where is
         #  the library?
-        ct = None
-        for k,v in headers:
-            if k.lower() == 'content-type':
-                ct = v.split(';')[0]
-                break
+        ct = headers.get('content-type', None)
+        if ct is not None:
+            ct = ct.split(';')[0]
 
         if body is not None:
             # if body is provided, content-type had better be too
@@ -201,7 +217,7 @@ class HTTPMetawebSession(MetawebSession):
                     if ct is None:
                         # XXX encoding and stuff
                         ct = 'application/x-www-form-urlencoded'
-                        headers.append(('content-type', ct))
+                        headers['content-type'] = ct
 
                     if ct == 'multipart/form-encoded':
                         # XXX fixme
@@ -212,25 +228,23 @@ class HTTPMetawebSession(MetawebSession):
                 # for all methods other than POST, use the url
                 url += '?' + qstr
 
-        return self._urllib2_request(url, body, headers)
-
-    def _urllib2_request(self, url, body, headers):
-
-        _cookiespy = urllib2.HTTPCookieProcessor(self._cookies)
-        self.opener = urllib2.build_opener(_cookiespy)
 
         # assure the service that this isn't a CSRF form submission
-        self.opener.addheaders = [('User-agent',
-                                   'python freebase.api-%s' % __version__),
-                                  ('X-Metaweb-Request', 'Python')]
+        headers['x-metaweb-request'] = 'Python'
 
-        #if headers:
-        #    self.opener.addheaders += headers
+        if 'user-agent' not in headers:
+            headers['user-agent'] = 'python freebase.api-%s' % __version__
 
         #if self.tid is not None:
-        #    self.opener.addheaders.append(('X-Metaweb-TID', self.tid))
+        #    headers['x-metaweb-tid'] = self.tid
 
-        req = urllib2.Request(url, body, dict(headers))
+        if CookiefulHttp is not None:
+            return self._httplib2_request(url, method, body, headers)
+        else:
+            return self._urllib2_request(url, method, body, headers)
+
+    def _urllib2_request(self, url, method, body, headers):
+        req = urllib2.Request(url, body, headers)
 
         try:
             resp = self.opener.open(req)
@@ -257,6 +271,19 @@ class HTTPMetawebSession(MetawebSession):
                 self.tid = value.strip()
 
         return (resp, resp.read())
+
+    def _httplib2_request(self, url, method, body, headers):
+        try:
+            resp, content = self.httpclient.request(url, method=method,
+                                                    body=body, headers=headers)
+        except socket.error, e:
+            log.error('SOCKET FAILURE: %s', e.fp.read())
+            raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
+
+        #tid = resp.get('x-metaweb-tid', None)
+
+        return (resp, content)
+
 
     def _httpreq_json(self, *args, **kws):
         resp, body = self._httpreq(*args, **kws)
@@ -319,7 +346,6 @@ class HTTPMetawebSession(MetawebSession):
             raise MetawebError(u'%s %r' % (r.get('code',''), r.messages))
 
         log.debug('LOGIN RESP: %r', r)
-        log.debug('LOGIN INFO: %s', resp.info())
         log.debug('LOGIN COOKIES: %s', self._cookies)
 
 
@@ -342,8 +368,9 @@ class HTTPMetawebSession(MetawebSession):
 
             if r['cursor']:
                 cursor = r['cursor']
+                log.info('CONTINUING with %s', cursor)
             else:
-                break
+                return
 
     def mqlread(self, sq):
         """read a structure query"""
@@ -404,6 +431,9 @@ class HTTPMetawebSession(MetawebSession):
 
 
 if __name__ == '__main__':
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+
     mss = HTTPMetawebSession('sandbox.freebase.com')
 
     print mss.mqlread([dict(name=None, type='/type/type')])
