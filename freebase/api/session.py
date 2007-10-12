@@ -68,7 +68,10 @@ simplejson.JSONEncoder.key_separator = ':'
 #delattr(simplejson.encoder.ESCAPE_DCT, '/')
 
 def urlencode_weak(s):
-    return urlquote(s, safe='{}[],"/:$')
+    # hack to render JSON form arguments legible - generates invalid uris!
+    #return urlquote(s, safe='{}[],"/:$')
+
+    return urlquote(s, safe=',/:$')
 
 
 # from http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/361668
