@@ -32,28 +32,52 @@
 # see http://bitworking.org/projects/URI-Templates/
 #  and http://bitworking.org/news/URI_Templates
 #
+# note that this implementation may go away soon in
+#  favor of joe gregorio's own code:
+#     http://code.google.com/p/uri-templates/
+#
+#
 # this implementation can also parse URIs, as long as the
 #   template is sufficiently specific.  to allow this to work
 #   the '/' character is forbidden in keys when parsing.  
 #   later it should be possible to loosen this restriction.
 #
+#
+# example:
+#   from whatever.uritemplate import expand_uri_template
+#   expand_uri_template('http://{host}/{file}',
+#                       dict(host='example.org',
+#                            file='fred'))
+#
 # TODO:
-#   simplify the syntax calling in - currently
-#     uri = new URITemplate(ut.template).run({...})
-#   allow parsing to be aware of www. and trailing /
+#   allow parsing to be aware of http://www. and trailing /
 #   nail down quoting issues
 #
 
 import os, sys, re
-
 import urllib
-def uri_encode_var(v):
+
+__all__ = ['expand_uri_template', 'URITemplate']
+
+
+def expand_uri_template(template, args):
+    """Expand a URI template using the given args dictionary.
+    """
+    return URITemplate(template).run(args)
+
+def _uri_encode_var(v):
     return urllib.quote(v, safe="-_.~!$&'()*+,;=:/?[]#@")
 
+
 class URITemplate(object):
+    """a URITemplate is a URI with simple variable substitution.
+    """
+
     VARREF = re.compile(r'\{([0-9a-zA-Z_]+)\}')
 
     def __init__(self, s):
+        """Compile a URITemplate from a string.
+        """
         self.template = s;
 
         self.params = []
@@ -64,7 +88,7 @@ class URITemplate(object):
                 # track the vars used
                 self.params.append(tsplit[i])
                 # vars match any string
-                # XXX vars are assumed to lack '/' - this is imperfect...
+                # vars are assumed to lack '/' - this is imperfect...
                 rxs.append('([^/]*)')
             else:
                 # quote special chars regexp interpretation
@@ -75,26 +99,32 @@ class URITemplate(object):
     def __repr__(self):
         return '<URITemplate %r>' % self.template
 
-    def run (self, **args):
+    def run (self, args):
+        """Expand the template using the given args.
+        """
         def repl(m):
             key = m.group(1)
-            return uri_encode_var(args.get(key, ''))
+            return _uri_encode_var(args.get(key, ''))
         uri = self.VARREF.sub(repl,self.template)
 
-        # XXX for testing, compare this to args array
-        if self.parse(uri) is None:
-            print 're-parsing generated uri failed: %r, %r' % (uri, self.template)
-
+        #if self.parse(uri) is None:
+        #    print 're-parsing generated uri failed: %r, %r' % (uri, self.template)
         return uri
 
 
     def parse(self, uri):
+        """Try to parse a URI, extracting variable values.
+        """
         m = self._parser.match(uri)
         if m is None:
             return None
         return dict(zip(self.params, m.groups()))
-    
+
+
 if __name__ == '__main__':
+    #
+    #  testcases are imported from the URI::Template module on CPAN
+    #
     import urllib2, simplejson
     fp = urllib2.urlopen('http://search.cpan.org/src/BRICAS/URI-Template-0.09/t/data/spec.json')
     testsuite = simplejson.loads(fp.read())
@@ -103,7 +133,7 @@ if __name__ == '__main__':
     nfail = 0
     for test in testsuite['tests']:
         ut = URITemplate(test['template'])
-        uri = ut.run(**vars)
+        uri = ut.run(vars)
         if uri != test['expected']:
             print 'FAILED %r expected %r' % (uri, test['expected'])
             print ' vars: %r' % (vars,)
