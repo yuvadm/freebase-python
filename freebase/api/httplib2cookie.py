@@ -33,6 +33,7 @@
 #
 #
 
+import re
 import httplib2
 from httplib2 import Http
 
@@ -108,8 +109,14 @@ class DummyMessage(object):
         v = self.response.get(k.lower(), None)
         if k not in self.response:
             return []
-        return [self.response[k]]
+        #return self.response[k].split(re.compile(',\\s*'))
 
+        # httplib2 joins multiple values for the same header
+        #  using ','.  but the netscape cookie format uses ','
+        #  as part of the expires= date format.  so we have
+        #  to split carefully here - header.split(',') won't do it.
+        HEADERVAL= re.compile(r'\s*(([^,]|(,\s*\d))+)')
+        return [h[0] for h in HEADERVAL.findall(self.response[k])]
 
 class CookiefulHttp(Http):
     """Subclass of httplib2.Http that keeps cookie state
