@@ -68,9 +68,6 @@ simplejson.JSONEncoder.key_separator = ':'
 #delattr(simplejson.encoder.ESCAPE_DCT, '/')
 
 def urlencode_weak(s):
-    # hack to render JSON form arguments legible - generates invalid uris!
-    #return urlquote(s, safe='{}[],"/:$')
-
     return urlquote(s, safe=',/:$')
 
 
@@ -137,9 +134,9 @@ class HTTPMetawebSession(MetawebSession):
     """
     # share cookies across sessions, so that different sessions can
     #  see each other's writes immediately.
-    _cookies = cookielib.CookieJar()
+    _default_cookiejar = cookielib.CookieJar()
 
-    def __init__(self, service_url, username=None, password=None, prev_session=None):
+    def __init__(self, service_url, username=None, password=None, prev_session=None, cookiejar=None):
         """
         create a new MetawebSession for interacting with the Metaweb.
 
@@ -161,10 +158,18 @@ class HTTPMetawebSession(MetawebSession):
         if prev_session:
             self.service_url = prev.service_url
 
-        if CookiefulHttp is not None:
-            self.httpclient = CookiefulHttp(cookiejar=self._cookies)
+        if cookiejar is not None:
+            self.cookiejar = cookiejar
+        elif prev_session:
+            self.cookiejar = prev_session.cookiejar
         else:
-            cookiespy = urllib2.HTTPCookieProcessor(self._cookies)
+            self.cookiejar = self._default_cookiejar
+
+
+        if CookiefulHttp is not None:
+            self.httpclient = CookiefulHttp(cookiejar=self.cookiejar)
+        else:
+            cookiespy = urllib2.HTTPCookieProcessor(self.cookiejar)
             self.opener = urllib2.build_opener(cookiespy)
 
 
@@ -189,7 +194,7 @@ class HTTPMetawebSession(MetawebSession):
         else:
             assert 0, 'unknown method %s' % method
 
-        log.debug('HTTPREQ: %s %s %s', service_path, method, self._cookies)
+        log.debug('HTTPREQ: %s %s %s', service_path, method, self.cookiejar)
 
         url = self.service_url + service_path
 
@@ -349,7 +354,7 @@ class HTTPMetawebSession(MetawebSession):
             raise MetawebError(u'%s %r' % (r.get('code',''), r.messages))
 
         log.debug('LOGIN RESP: %r', r)
-        log.debug('LOGIN COOKIES: %s', self._cookies)
+        log.debug('LOGIN COOKIES: %s', self.cookiejar)
 
 
     def mqlreaditer(self, sq):
@@ -393,9 +398,8 @@ class HTTPMetawebSession(MetawebSession):
     def trans(self, guid):
         """translate blob from guid """
         url = '/api/trans/raw/' + urlquote(guid)
-        resp = self._httpreq(url)
-        content = resp.read()
-        return content
+        resp, body = self._httpreq(url)
+        return body
 
     def mqlwrite(self, sq):
         """do a mql write"""
