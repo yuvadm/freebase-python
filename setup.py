@@ -27,17 +27,38 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # ========================================================================
 
-#from distutils.core import setup
-from setuptools import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 setup(
     name='freebase',
-    version='0.1.0',
-    description='Python client library for Freebase API service',
+    version='0.2.0',
+    author='Nick Thompson',
+    author_email='nix@metaweb.com',
     maintainer_email='developers@freebase.com',
     license='BSD',
-    url='http://www.freebase.com/',
-    packages=['freebase']
+    url='http://code.google.com/p/freebase-python/',
+    description='Python client library for the freebase.com service',
+    long_description="""A Python library providing a convenient
+    wrapper around the freebase.com service api, as well as some
+    utility functions helpful in writing clients of the api.""",
+    packages=['freebase'],
+    #download_url='xxx',   # provided by cheeseshop?
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Environment :: Console',
+        'Environment :: Web Environment',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Topic :: Database :: Front-Ends',
+        'Topic :: Internet :: WWW/HTTP',
+        'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
+        'Topic :: Internet :: WWW/HTTP :: Dynamic Content :: CGI Tools/Libraries',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        ],
 )
-
 
