@@ -36,16 +36,20 @@ class Parser(object):
     #WHITESPACE = " \t\n\r\f"
 
     # we divide the uri-safe glyphs into three sets
-    #   <rison> - used by rison                         ' ! : ( ) ,
-    #   <identifier> - common in strings                - _ . / ~
-    #   <reserved> - not common in strings, reserved    * @ $
-    #
     # <rison> and <reserved> classes are illegal in ids.
-    # ids also can't look like numbers.
+    #   <rison> - used by rison (possibly later)
+    #   <reserved> - not common in strings, reserved
+    #not_idchar  = "'!=:(),*@$;&";
 
-    not_idchar  = "'!:(),*@$";
+    idchar_punctuation = '_-./~'
+    not_idchar  = ''.join([c for c in (chr(i) for i in range(127))
+                           if not (c.isalnum()
+                                   or c in idchar_punctuation)])
+
+    # additionally, we need to distinguish ids and numbers by first char
     not_idstart = "-0123456789";
 
+    # regexp string matching a valid id
     idrx = ('[^' + not_idstart + not_idchar + 
             '][^' + not_idchar + ']*')
 
@@ -66,7 +70,7 @@ class Parser(object):
 
         value = self.readValue()
         if self.next():
-            raise ParserException("extra characters at the end of the string")
+            raise ParserException("unable to parse rison string %r" % (str,))
         return value
     
     def readValue(self):
@@ -280,7 +284,7 @@ if __name__ == '__main__':
         "G.",
         "a",
         "'0a'",
-        "abc def",
+        "'abc def'",
         "()",
         "(a:0)",
         "(id:!n,type:/common/document)",
