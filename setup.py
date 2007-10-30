@@ -34,7 +34,7 @@ except ImportError:
 
 setup(
     name='freebase',
-    version='0.2.0',
+    version='0.2.1',
     author='Nick Thompson',
     author_email='nix@metaweb.com',
     maintainer_email='developers@freebase.com',
@@ -44,7 +44,7 @@ setup(
     long_description="""A Python library providing a convenient
     wrapper around the freebase.com service api, as well as some
     utility functions helpful in writing clients of the api.""",
-    packages=['freebase'],
+    packages=['freebase', 'freebase.api'],
     #download_url='xxx',   # provided by cheeseshop?
     classifiers=[
         'Development Status :: 3 - Alpha',
