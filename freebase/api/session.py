@@ -48,11 +48,7 @@ import simplejson
 from urllib import quote as urlquote
 import pprint
 import socket
-
 import logging
-log = logging.getLogger()
-log.setLevel(logging.DEBUG)
-log.addHandler(logging.StreamHandler())
 
 try:
     import httplib2
@@ -60,12 +56,15 @@ try:
 except ImportError:
     httplib2 = None
     CookiefulHttp = None
-    log.info('freebase.api: you can install httplib2 for better performance')
+    print ('freebase.api: you can install httplib2 for better performance')
 
 import simplejson.encoder
+# remove whitespace from json encoded output
 simplejson.JSONEncoder.item_separator = ','
 simplejson.JSONEncoder.key_separator = ':'
-#delattr(simplejson.encoder.ESCAPE_DCT, '/')
+# don't escape slashes, we're not pasting into script tags here.
+if simplejson.encoder.ESCAPE_DCT.get('/', None) == r'\/':
+    simplejson.encoder.ESCAPE_DCT['/'] = '/'
 
 def urlencode_weak(s):
     return urlquote(s, safe=',/:$')
@@ -114,7 +113,7 @@ class MetawebSession(object):
     MetawebSession is the base class for MetawebSession, subclassed for
     different connection types.  Only http is available externally.
 
-    This is more of an interface than 
+    This is more of an interface than a class
     """
 
     # interface definition here...
@@ -143,6 +142,8 @@ class HTTPMetawebSession(MetawebSession):
         a new session will inherit state from prev_session if present, 
         """
         super(HTTPMetawebSession, self).__init__()
+
+        self.log = logging.getLogger()
 
         assert not service_url.endswith('/')
         if not '/' in service_url:  # plain host:port
@@ -194,8 +195,6 @@ class HTTPMetawebSession(MetawebSession):
         else:
             assert 0, 'unknown method %s' % method
 
-        log.debug('HTTPREQ: %s %s %s', service_path, method, self.cookiejar)
-
         url = self.service_url + service_path
 
         if headers is None:
@@ -246,6 +245,20 @@ class HTTPMetawebSession(MetawebSession):
         #if self.tid is not None:
         #    headers['x-metaweb-tid'] = self.tid
 
+        ####### DEBUG MESSAGE - should check log level before generating 
+        if form is None:
+            formstr = ''
+        else:
+            formstr = 'FORM:\n  ' + '\n  '.join(['%s=%s' % (k,v)
+                                          for k,v in form.items()])
+        if headers is None:
+            headerstr = ''
+        else:
+            headerstr = 'HEADERS:\n  ' + '\n  '.join([('%s: %s' % (k,v))
+                                              for k,v in headers.items()])
+        self.log.debug('%s %s%s%s', method, url, formstr, headerstr)
+        #######
+
         if CookiefulHttp is not None:
             return self._httplib2_request(url, method, body, headers)
         else:
@@ -258,7 +271,7 @@ class HTTPMetawebSession(MetawebSession):
             resp = self.opener.open(req)
 
         except socket.error, e:
-            log.error('SOCKET FAILURE: %s', e.fp.read())
+            self.log.error('SOCKET FAILURE: %s', e.fp.read())
             raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
 
         except urllib2.HTTPError, e:
@@ -273,7 +286,7 @@ class HTTPMetawebSession(MetawebSession):
             raise MetawebError, 'request failed: %s: %r %r' % (url, str(e), e.fp.read())
 
         for header in resp.info().headers:
-            log.debug('HTTP HEADER %s', header)
+            self.log.debug('HTTP HEADER %s', header)
             name, value = re.split("[:\n\r]", header, 1)
             if name.lower() == 'x-metaweb-tid':
                 self.tid = value.strip()
@@ -285,7 +298,7 @@ class HTTPMetawebSession(MetawebSession):
             resp, content = self.httpclient.request(url, method=method,
                                                     body=body, headers=headers)
         except socket.error, e:
-            log.error('SOCKET FAILURE: %s', e.fp.read())
+            self.log.error('SOCKET FAILURE: %s', e.fp.read())
             raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
 
         #tid = resp.get('x-metaweb-tid', None)
@@ -313,13 +326,13 @@ class HTTPMetawebSession(MetawebSession):
             return st
 
         if json == '':
-            log.error('the empty string is not valid json')
+            self.log.error('the empty string is not valid json')
             raise MetawebError('the empty string is not valid json')
 
         try:
             r = simplejson.loads(json)
         except ValueError, e:
-            log.error('error parsing json string %r' % json)
+            self.log.error('error parsing json string %r' % json)
             raise MetawebError, 'error parsing JSON string: %s' % e
 
         return struct2attrdict(r)
@@ -327,11 +340,17 @@ class HTTPMetawebSession(MetawebSession):
     def _check_mqlerror(self, r):
         if r.code != '/api/status/ok':
             for msg in r.messages:
-                log.error('mql error: %s %s' % (msg.code, msg.message))
+                self.log.error('mql error: %s %s' % (msg.code, msg.message))
             raise MetawebError, 'query failed: %s' % r.messages[0].code
 
     def _mqlresult(self, r):
         self._check_mqlerror(r)
+
+        # should check log level to avoid redundant simplejson.dumps
+        rstr = simplejson.dumps(r.result, indent=2)
+        if rstr[0] == '{':
+            rstr = rstr[1:-2]
+        self.log.info('result: %s', rstr)
 
         return r.result
 
@@ -341,7 +360,7 @@ class HTTPMetawebSession(MetawebSession):
         assert self.username is not None
         assert self.password is not None
         
-        log.debug('LOGIN USERNAME: %s', self.username)
+        self.log.debug('LOGIN USERNAME: %s', self.username)
         
         try:
             r = self._httpreq_json('/api/account/login', 'POST',
@@ -353,8 +372,8 @@ class HTTPMetawebSession(MetawebSession):
         if r.code != '/api/status/ok':
             raise MetawebError(u'%s %r' % (r.get('code',''), r.messages))
 
-        log.debug('LOGIN RESP: %r', r)
-        log.debug('LOGIN COOKIES: %s', self.cookiejar)
+        self.log.debug('LOGIN RESP: %r', r)
+        self.log.debug('LOGIN COOKIES: %s', self.cookiejar)
 
 
     def mqlreaditer(self, sq):
@@ -376,7 +395,7 @@ class HTTPMetawebSession(MetawebSession):
 
             if r['cursor']:
                 cursor = r['cursor']
-                log.info('CONTINUING with %s', cursor)
+                self.log.info('CONTINUING with %s', cursor)
             else:
                 return
 
@@ -385,14 +404,18 @@ class HTTPMetawebSession(MetawebSession):
         subq = dict(query=sq, escape=False)
         if isinstance(sq, list):
             subq['cursor'] = True
-        qstr = simplejson.dumps(dict(c0=subq))
-
-        log.debug('MQLREAD: %s', qstr)
 
         service = '/api/service/mqlread'
 
+        # should check log level to avoid redundant simplejson.dumps
+        self.log.info('%s: %s',
+                      service,
+                      simplejson.dumps(sq, indent=2)[1:-2])
+
+        qstr = simplejson.dumps(dict(c0=subq))
         r = self._httpreq_json(service, form=dict(queries=qstr))
         r = r['c0']
+
         return self._mqlresult(r)
 
     def trans(self, guid):
@@ -406,18 +429,24 @@ class HTTPMetawebSession(MetawebSession):
         query = dict(q=dict(query=sq, escape=False))
         qstr = simplejson.dumps(query)
 
-        log.debug('MQLWRITE: %s', qstr)
+        self.log.debug('MQLWRITE: %s', qstr)
 
         service = '/api/service/mqlwrite'
+
+        # should check log level to avoid redundant simplejson.dumps
+        self.log.info('%s: %s',
+                      service,
+                      simplejson.dumps(sq, indent=2)[1:-2])
+
         r = self._httpreq_json(service, 'POST',
                                form=dict(queries=qstr))
 
-        log.debug('MQLWRITE RESP: %r', r)
+        self.log.debug('MQLWRITE RESP: %r', r)
         return self._mqlresult(r['q'])
 
     def mqlflush(self):
         """ask the service not to hand us old data"""
-        log.debug('MQLFLUSH')
+        self.log.debug('MQLFLUSH')
     
         service = '/api/service/mqlwrite'
         r = self._httpreq_json(service, 'POST', form={})
@@ -425,22 +454,41 @@ class HTTPMetawebSession(MetawebSession):
         self._check_mqlerror(r)
         return r
 
-    def upload(self, body, content_type):
+    def upload(self, body, content_type, document_id=False):
         """upload to the metaweb"""
 
-        log.debug('UPLOAD %s', content)
-
         service = '/api/service/upload'
+
+        self.log.info('POST %s: %s (%d bytes)',
+                      service, content_type, len(body))
+
+
+        headers = {}
+        if content_type is not None:
+            headers['content-type'] = content_type
+
+        form = None
+        if document_id is not False:
+            if document_id is None:
+                form = { 'document': '' }
+            else:
+                form = { 'document': document_id }
+
+        # note the use of both body and form.
+        #  form parameters get encoded into the URL in this case
         r = self._httpreq_json(service, 'POST',
-                               headers={'content-type': content_type},
-                               body=qstr)
+                               headers=headers, body=body, form=form)
         return self._mqlresult(r)
 
 
 if __name__ == '__main__':
     console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
+    console.setLevel(logging.DEBUG)
 
     mss = HTTPMetawebSession('sandbox.freebase.com')
+
+    self.mss.log.setLevel(logging.DEBUG)
+    self.mss.log.addHandler(console)
+
 
     print mss.mqlread([dict(name=None, type='/type/type')])
