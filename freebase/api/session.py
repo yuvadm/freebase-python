@@ -383,12 +383,11 @@ class HTTPMetawebSession(MetawebSession):
 
         while 1:
             subq = dict(query=[sq], cursor=cursor, escape=False)
-            qstr = simplejson.dumps(dict(c0=subq))
+            qstr = simplejson.dumps(subq)
 
             service = '/api/service/mqlread'
             
-            r = self._httpreq_json(service, form=dict(queries=qstr))
-            r = r['c0']
+            r = self._httpreq_json(service, form=dict(query=qstr))
 
             for item in self._mqlresult(r):
                 yield item
@@ -412,9 +411,8 @@ class HTTPMetawebSession(MetawebSession):
                       service,
                       simplejson.dumps(sq, indent=2)[1:-2])
 
-        qstr = simplejson.dumps(dict(c0=subq))
-        r = self._httpreq_json(service, form=dict(queries=qstr))
-        r = r['c0']
+        qstr = simplejson.dumps(subq)
+        r = self._httpreq_json(service, form=dict(query=qstr))
 
         return self._mqlresult(r)
 
@@ -426,7 +424,7 @@ class HTTPMetawebSession(MetawebSession):
 
     def mqlwrite(self, sq):
         """do a mql write"""
-        query = dict(q=dict(query=sq, escape=False))
+        query = dict(query=sq, escape=False)
         qstr = simplejson.dumps(query)
 
         self.log.debug('MQLWRITE: %s', qstr)
@@ -439,10 +437,10 @@ class HTTPMetawebSession(MetawebSession):
                       simplejson.dumps(sq, indent=2)[1:-2])
 
         r = self._httpreq_json(service, 'POST',
-                               form=dict(queries=qstr))
+                               form=dict(query=qstr))
 
         self.log.debug('MQLWRITE RESP: %r', r)
-        return self._mqlresult(r['q'])
+        return self._mqlresult(r)
 
     def mqlflush(self):
         """ask the service not to hand us old data"""
