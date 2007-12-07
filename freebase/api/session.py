@@ -264,6 +264,17 @@ class HTTPMetawebSession(MetawebSession):
         else:
             return self._urllib2_request(url, method, body, headers)
 
+
+    def _raise_service_error(self, status, ctype, body):
+        is_jsbody = (e.info().type.endswith('javascript')
+                     or e.info().type.endswith('json'))
+        if str(status) == '400' and is_jsbody:
+            r = self._loadjson(body)
+            msg = r.messages[0]
+            raise MetawebError(u'%s %s %r' % (msg.get('code',''), msg.message, msg.info))
+
+        raise MetawebError, 'request failed: %s: %r %r' % (url, str(e), body)
+        
     def _urllib2_request(self, url, method, body, headers):
         req = urllib2.Request(url, body, headers)
 
@@ -275,15 +286,7 @@ class HTTPMetawebSession(MetawebSession):
             raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
 
         except urllib2.HTTPError, e:
-            if e.code == 400 and e.info().type == 'application/json':
-                r = self._loadjson(e.fp.read())
-                for msg in r.messages:
-                    if msg.get('level', 'error') == 'error':
-                        raise MetawebError(u'%s %s %r' % (msg.get('code',''), msg.message, msg.info))
-
-                # some 400 we don't recognize.  hmm.
-                raise MetawebError(u'%r' %  r)
-            raise MetawebError, 'request failed: %s: %r %r' % (url, str(e), e.fp.read())
+            _raise_service_error(e.code, e.info().type, e.fp.read())
 
         for header in resp.info().headers:
             self.log.debug('HTTP HEADER %s', header)
@@ -300,6 +303,11 @@ class HTTPMetawebSession(MetawebSession):
         except socket.error, e:
             self.log.error('SOCKET FAILURE: %s', e.fp.read())
             raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
+
+        except httplib2.HttpLib2ErrorWithResponse, e:
+            self._raise_service_error(resp.status, resp['content-type'], content)
+        except httplib2.HttpLib2Error, e:
+            raise MetawebError(u'HTTP error: %s' % (e,))
 
         #tid = resp.get('x-metaweb-tid', None)
 
