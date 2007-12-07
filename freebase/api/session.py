@@ -135,7 +135,7 @@ class HTTPMetawebSession(MetawebSession):
     #  see each other's writes immediately.
     _default_cookiejar = cookielib.CookieJar()
 
-    def __init__(self, service_url, username=None, password=None, prev_session=None, cookiejar=None):
+    def __init__(self, service_url, username=None, password=None, prev_session=None, cookiejar=None, cookiefile=None):
         """
         create a new MetawebSession for interacting with the Metaweb.
 
@@ -159,6 +159,9 @@ class HTTPMetawebSession(MetawebSession):
         if prev_session:
             self.service_url = prev.service_url
 
+        if cookiefile is not None:
+            cookiejar = self.open_cookie_file(cookiefile)
+
         if cookiejar is not None:
             self.cookiejar = cookiejar
         elif prev_session:
@@ -166,12 +169,25 @@ class HTTPMetawebSession(MetawebSession):
         else:
             self.cookiejar = self._default_cookiejar
 
-
         if CookiefulHttp is not None:
             self.httpclient = CookiefulHttp(cookiejar=self.cookiejar)
         else:
             cookiespy = urllib2.HTTPCookieProcessor(self.cookiejar)
             self.opener = urllib2.build_opener(cookiespy)
+
+
+    def open_cookie_file(self, cookiefile=None):
+        if cookiefile is None or cookiefile == '':
+            if os.environ.has_key('HOME'):
+                cookiefile = os.path.join(os.environ['HOME'], '.pyfreebase/cookiejar')
+            else:
+                raise MetawebError("no cookiefile specified and no $HOME/.pyfreebase directory" % cookiefile)
+
+        cookiejar = cookielib.LWPCookieJar(cookiefile)
+        if os.path.exists(cookiefile):
+            cookiejar.load(ignore_discard=True)
+
+        return cookiejar
 
 
     def _httpreq(self, service_path, method='GET', body=None, form=None,
@@ -348,8 +364,9 @@ class HTTPMetawebSession(MetawebSession):
     def _check_mqlerror(self, r):
         if r.code != '/api/status/ok':
             for msg in r.messages:
-                self.log.error('mql error: %s %s' % (msg.code, msg.message))
-            raise MetawebError, 'query failed: %s' % r.messages[0].code
+                self.log.error('mql error: %s %s %r' % (msg.code, msg.message, msg.get('query', None)))
+            print 'MSGI %r' % (r,)
+            raise MetawebError, 'query failed: %s %r' % (r.messages[0].code, r.messages[0].get('query', None))
 
     def _mqlresult(self, r):
         self._check_mqlerror(r)
@@ -361,6 +378,8 @@ class HTTPMetawebSession(MetawebSession):
         self.log.info('result: %s', rstr)
 
         return r.result
+
+
 
     def login(self):
         """sign in to the service"""
