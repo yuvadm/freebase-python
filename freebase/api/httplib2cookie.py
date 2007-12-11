@@ -40,6 +40,7 @@ from httplib2 import Http
 import mimetools
 import urllib
 import urllib2
+import cookielib
 
 class DummyRequest(object):
     """Simulated urllib2.Request object for httplib2
@@ -49,7 +50,7 @@ class DummyRequest(object):
     def __init__(self, url, headers=None):
         self.url = url
         self.headers = headers
-        self.origin_req_host = urllib2.request_host(self)
+        self.origin_req_host = cookielib.request_host(self)
         self.type, r = urllib.splittype(url)
         self.host, r = urllib.splithost(r)
         if self.host:
