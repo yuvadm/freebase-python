@@ -444,8 +444,14 @@ class HTTPMetawebSession(MetawebSession):
 
     def trans(self, guid):
         """translate blob from guid """
-        url = '/api/trans/raw/' + urlquote(guid)
+        url = '/api/trans/raw' + urlquote(guid)
+
+        self.log.info(url)
+
         resp, body = self._httpreq(url)
+
+        self.log.info('%d bytes' % len(body))
+
         return body
 
     def mqlwrite(self, sq):
