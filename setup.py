@@ -34,7 +34,7 @@ except ImportError:
 
 setup(
     name='freebase',
-    version='0.2.2',
+    version='0.2.3',
     author='Nick Thompson',
     author_email='nix@metaweb.com',
     maintainer_email='developers@freebase.com',
