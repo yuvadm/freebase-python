@@ -1,0 +1,21 @@
+These are two independent python libraries for use in
+accessing Freebase services from Python:
+
+* metaweb-py is the older and simpler of the two.  It's an improved
+  version of the metaweb.py module originally developed by David
+  Flanagan as part of the original Freebase API documentation.
+
+  Pros: Single file, simpler.
+
+* freebase-api is a more ambitious library that is derived from
+  code developed by Nick Thompson for accessing freebase services.
+
+  Pros: Does more.
+
+Both are available under a simple 2-clause BSD-style license that
+should allow you to reuse this code in both open-source and
+commercial projects.
+
+If you have suggestions, bug fixes, or feature requests for either
+of these, please let one of the maintainers know or you can
+discuss it on the Freebase developers list.
