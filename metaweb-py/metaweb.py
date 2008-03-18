@@ -91,7 +91,7 @@ def read(q, credentials=None):
         raise MQLError('%s: %s' % (error['code'], error['message']))
 
     # If there was no error, then just return the result from the envelope
-    return inner['result'];
+    return inner['result']
 
 # Submit the MQL query q and return the result as a Python object
 # This function behaves like read() above, but uses cursors so that
@@ -135,7 +135,7 @@ def readall(q, credentials=None):
             raise MQLError('%s: %s' % (error['code'], error['message']))
 
         # Append this batch of results to the main array of results.
-        results.extend(inner['result']);
+        results.extend(inner['result'])
 
         # Finally, get the new value of the cursor for the next iteration
         cursor = inner['cursor']
