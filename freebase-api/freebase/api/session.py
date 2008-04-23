@@ -265,14 +265,14 @@ class HTTPMetawebSession(MetawebSession):
         if form is None:
             formstr = ''
         else:
-            formstr = 'FORM:\n  ' + '\n  '.join(['%s=%s' % (k,v)
+            formstr = '\nFORM:\n  ' + '\n  '.join(['%s=%s' % (k,v)
                                           for k,v in form.items()])
         if headers is None:
             headerstr = ''
         else:
-            headerstr = 'HEADERS:\n  ' + '\n  '.join([('%s: %s' % (k,v))
+            headerstr = '\nHEADERS:\n  ' + '\n  '.join([('%s: %s' % (k,v))
                                               for k,v in headers.items()])
-        self.log.debug('%s %s%s%s', method, url, formstr, headerstr)
+        self.log.info('%s %s%s%s', method, url, formstr, headerstr)
         #######
 
         if CookiefulHttp is not None:
@@ -281,15 +281,16 @@ class HTTPMetawebSession(MetawebSession):
             return self._urllib2_request(url, method, body, headers)
 
 
-    def _raise_service_error(self, status, ctype, body):
-        is_jsbody = (e.info().type.endswith('javascript')
-                     or e.info().type.endswith('json'))
+    def _raise_service_error(self, url, status, ctype, body):
+
+        is_jsbody = (ctype.endswith('javascript')
+                     or ctype.endswith('json'))
         if str(status) == '400' and is_jsbody:
             r = self._loadjson(body)
             msg = r.messages[0]
             raise MetawebError(u'%s %s %r' % (msg.get('code',''), msg.message, msg.info))
 
-        raise MetawebError, 'request failed: %s: %r %r' % (url, str(e), body)
+        raise MetawebError, 'request failed: %s: %r %r' % (url, status, body)
         
     def _urllib2_request(self, url, method, body, headers):
         req = urllib2.Request(url, body, headers)
@@ -302,7 +303,7 @@ class HTTPMetawebSession(MetawebSession):
             raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
 
         except urllib2.HTTPError, e:
-            _raise_service_error(e.code, e.info().type, e.fp.read())
+            _raise_service_error(url, e.code, e.info().type, e.fp.read())
 
         for header in resp.info().headers:
             self.log.debug('HTTP HEADER %s', header)
@@ -316,12 +317,15 @@ class HTTPMetawebSession(MetawebSession):
         try:
             resp, content = self.httpclient.request(url, method=method,
                                                     body=body, headers=headers)
+            if (resp.status != 200):
+                self._raise_service_error(url, resp.status, resp['content-type'], content)
+
         except socket.error, e:
             self.log.error('SOCKET FAILURE: %s', e.fp.read())
             raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
 
         except httplib2.HttpLib2ErrorWithResponse, e:
-            self._raise_service_error(resp.status, resp['content-type'], content)
+            self._raise_service_error(url, resp.status, resp['content-type'], content)
         except httplib2.HttpLib2Error, e:
             raise MetawebError(u'HTTP error: %s' % (e,))
 
@@ -442,6 +446,34 @@ class HTTPMetawebSession(MetawebSession):
 
         return self._mqlresult(r)
 
+    def mqlreadmulti(self, queries):
+        """read a structure query"""
+        keys = [('q%d' % i) for i,v in enumerate(queries)];
+        envelope = {}
+        for i,sq in enumerate(queries):
+            subq = dict(query=sq, escape=False)
+            # XXX put this back once mqlreadmulti is working in general
+            #if isinstance(sq, list):
+            #    subq['cursor'] = True
+            envelope[keys[i]] = subq
+
+        service = '/api/service/mqlread'
+
+        # should check log level to avoid redundant simplejson.dumps
+        self.log.info('%s: %s',
+                      service,
+                      simplejson.dumps(envelope, indent=2)[1:-2])
+
+        qstr = simplejson.dumps(envelope)
+        rs = self._httpreq_json(service, form=dict(queries=qstr))
+
+        # should check log level to avoid redundant simplejson.dumps
+        self.log.info('%s result: %s',
+                      service,
+                      simplejson.dumps(rs, indent=2))
+
+        return [self._mqlresult(rs[key]) for key in keys]
+
     def trans(self, guid):
         """translate blob from guid """
         url = '/api/trans/raw' + urlquote(guid)
@@ -478,11 +510,14 @@ class HTTPMetawebSession(MetawebSession):
         """ask the service not to hand us old data"""
         self.log.debug('MQLFLUSH')
     
-        service = '/api/service/mqlwrite'
-        r = self._httpreq_json(service, 'POST', form={})
+        service = '/api/service/touch'
+        r = self._httpreq(service, 'POST', body='',
+                          headers={'content-type':'application/xml',
+                                   'content-length':'0'})
 
-        self._check_mqlerror(r)
-        return r
+        # TODO non-conforming service, fix later
+        #self._check_mqlerror(r)
+        return True
 
     def upload(self, body, content_type, document_id=False):
         """upload to the metaweb"""
