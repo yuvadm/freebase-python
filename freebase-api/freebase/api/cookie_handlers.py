@@ -34,12 +34,22 @@
 #
 
 import re
-import httplib2
-from httplib2 import Http
 
-import mimetools
-import urllib
-import urllib2
+try:
+    from google.appengine.api import urlfetch
+    Http = object
+except ImportError:
+    pass
+
+try:
+    from httplib2 import Http
+except ImportError:
+    pass
+
+try:
+    import urllib
+except ImportError:
+    import urllib_stub as urllib
 import cookielib
 
 class DummyRequest(object):
@@ -84,8 +94,7 @@ class DummyRequest(object):
         #  request is the result of a redirect
         return False
 
-
-class DummyResponse(object):
+class DummyHttplib2Response(object):
     """Simulated urllib2.Request object for httplib2
 
        implements only what's necessary for cookielib.CookieJar to work
@@ -94,10 +103,22 @@ class DummyResponse(object):
         self.response = response
 
     def info(self):
-        return DummyMessage(self.response)
+        return DummyHttplib2Message(self.response)
 
 
-class DummyMessage(object):
+class DummyUrlfetchResponse(object):
+    """Simulated urllib2.Request object for httplib2
+
+       implements only what's necessary for cookielib.CookieJar to work
+    """
+    def __init__(self, response):
+        self.response = response
+
+    def info(self):
+        return DummyUrlfetchMessage(self.response)
+
+
+class DummyHttplib2Message(object):
     """Simulated mimetools.Message object for httplib2
 
        implements only what's necessary for cookielib.CookieJar to work
@@ -118,6 +139,28 @@ class DummyMessage(object):
         #  to split carefully here - header.split(',') won't do it.
         HEADERVAL= re.compile(r'\s*(([^,]|(,\s*\d))+)')
         return [h[0] for h in HEADERVAL.findall(self.response[k])]
+
+class DummyUrlfetchMessage(object):
+    """Simulated mimetools.Message object for httplib2
+
+       implements only what's necessary for cookielib.CookieJar to work
+    """
+    def __init__(self, response):
+        self.response = response
+
+    def getheaders(self, k):
+        k = k.lower()
+        v = self.response.headers.get(k.lower(), None)
+        if k not in self.response.headers:
+            return []
+        #return self.response[k].split(re.compile(',\\s*'))
+
+        # httplib2 joins multiple values for the same header
+        #  using ','.  but the netscape cookie format uses ','
+        #  as part of the expires= date format.  so we have
+        #  to split carefully here - header.split(',') won't do it.
+        HEADERVAL= re.compile(r'\s*(([^,]|(,\s*\d))+)')
+        return [h[0] for h in HEADERVAL.findall(self.response.headers[k])]
 
 class CookiefulHttp(Http):
     """Subclass of httplib2.Http that keeps cookie state
@@ -143,7 +186,30 @@ class CookiefulHttp(Http):
 
         (r, body) = Http.request(self, uri, headers=headers, **kws)
 
-        resp = DummyResponse(r)
+        resp = DummyHttplib2Response(r)
         self.cookiejar.extract_cookies(resp, req)
 
         return (r, body)
+
+class CookiefulUrlfetch(object):
+    """Class that keeps cookie state
+
+       constructor takes an optional cookiejar=cookielib.CookieJar
+    """ 
+    # TODO refactor CookefulHttp so that CookiefulUrlfetch can be a subclass of it
+    def __init__(self, cookiejar=None, **kws):
+        if cookiejar is None:
+            cookejar = cookielib.CookieJar()
+        self.cookejar = cookiejar
+
+    def request(self, uri, **kws):
+        headers = kws.pop('headers', None)
+        req = DummyRequest(uri, headers)
+        self.cookejar.add_cookie_header(req)
+        headers = req.headers
+
+        r = urlfetch.fetch(uri, headers=headers, **kws)
+
+        self.cookejar.extract_cookies(DummyUrlfetchResponse(r), req)
+        return r
+

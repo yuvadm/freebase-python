@@ -6,6 +6,9 @@ INSTALL:
  
 	/usr/bin/python setup.py install
 
+    When using freebase-python with Google AppEngine you will also need to
+    include the files in appengine_stubs with you AppEngine app.
+
 SYNOPSIS:
 
 	#!/usr/bin/python 

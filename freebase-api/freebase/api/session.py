@@ -42,23 +42,38 @@ __all__ = ['MetawebError', 'MetawebSession', 'HTTPMetawebSession', 'attrdict']
 __version__ = '0.1'
 
 import os, sys, re
-import urllib2
 import cookielib
-import simplejson
-from urllib import quote as urlquote
+try:
+    import simplejson
+except ImportError:
+    from django.utils import simplejson
+try:
+    from urllib import quote as urlquote
+except ImportError:
+    from urlib_stub import quote as urlquote
 import pprint
 import socket
 import logging
 
-try:
-    import httplib2
-    from httplib2cookie import CookiefulHttp
-except ImportError:
-    httplib2 = None
-    CookiefulHttp = None
-    print ('freebase.api: you can install httplib2 for better performance')
+from httpclients import Httplib2Client, Urllib2Client, UrlfetchClient
 
-import simplejson.encoder
+# Check for urlfetch first so that urlfetch is used when running the appengine SDK
+try:
+    import google.appengine.api.urlfetch
+    from cookie_handlers import CookiefulUrlfetch
+    http_client = UrlfetchClient
+except ImportError:
+    try:
+        import httplib2
+        from cookie_handlers import CookiefulHttp
+        http_client = Httplib2Client
+    except ImportError:
+        import urllib2
+        httplib2 = None
+        CookiefulHttp = None
+        http_client = Urllib2Client
+        print ('freebase.api: you can install httplib2 for better performance')
+
 # remove whitespace from json encoded output
 simplejson.JSONEncoder.item_separator = ','
 simplejson.JSONEncoder.key_separator = ':'
@@ -124,7 +139,6 @@ NORMALIZE_SPACE = re.compile(r'(?:\r\n)?[ \t]+')
 def _normalize_headers(headers):
     return dict([ (key.lower(), NORMALIZE_SPACE.sub(value, ' ').strip())  for (key, value) in headers.iteritems()])
 
-
 class HTTPMetawebSession(MetawebSession):
     """
     a MetawebSession is a request/response queue.
@@ -169,11 +183,7 @@ class HTTPMetawebSession(MetawebSession):
         else:
             self.cookiejar = self._default_cookiejar
 
-        if CookiefulHttp is not None:
-            self.httpclient = CookiefulHttp(cookiejar=self.cookiejar)
-        else:
-            cookiespy = urllib2.HTTPCookieProcessor(self.cookiejar)
-            self.opener = urllib2.build_opener(cookiespy)
+        self._http_request = http_client(self.cookiejar)
 
 
     def open_cookie_file(self, cookiefile=None):
@@ -275,11 +285,7 @@ class HTTPMetawebSession(MetawebSession):
         self.log.info('%s %s%s%s', method, url, formstr, headerstr)
         #######
 
-        if CookiefulHttp is not None:
-            return self._httplib2_request(url, method, body, headers)
-        else:
-            return self._urllib2_request(url, method, body, headers)
-
+        return self._http_request(url, method, body, headers)
 
     def _raise_service_error(self, url, status, ctype, body):
 
@@ -292,48 +298,6 @@ class HTTPMetawebSession(MetawebSession):
 
         raise MetawebError, 'request failed: %s: %r %r' % (url, status, body)
         
-    def _urllib2_request(self, url, method, body, headers):
-        req = urllib2.Request(url, body, headers)
-
-        try:
-            resp = self.opener.open(req)
-
-        except socket.error, e:
-            self.log.error('SOCKET FAILURE: %s', e.fp.read())
-            raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
-
-        except urllib2.HTTPError, e:
-            _raise_service_error(url, e.code, e.info().type, e.fp.read())
-
-        for header in resp.info().headers:
-            self.log.debug('HTTP HEADER %s', header)
-            name, value = re.split("[:\n\r]", header, 1)
-            if name.lower() == 'x-metaweb-tid':
-                self.tid = value.strip()
-
-        return (resp, resp.read())
-
-    def _httplib2_request(self, url, method, body, headers):
-        try:
-            resp, content = self.httpclient.request(url, method=method,
-                                                    body=body, headers=headers)
-            if (resp.status != 200):
-                self._raise_service_error(url, resp.status, resp['content-type'], content)
-
-        except socket.error, e:
-            self.log.error('SOCKET FAILURE: %s', e.fp.read())
-            raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
-
-        except httplib2.HttpLib2ErrorWithResponse, e:
-            self._raise_service_error(url, resp.status, resp['content-type'], content)
-        except httplib2.HttpLib2Error, e:
-            raise MetawebError(u'HTTP error: %s' % (e,))
-
-        #tid = resp.get('x-metaweb-tid', None)
-
-        return (resp, content)
-
-
     def _httpreq_json(self, *args, **kws):
         resp, body = self._httpreq(*args, **kws)
         return self._loadjson(body)
