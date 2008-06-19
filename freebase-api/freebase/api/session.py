@@ -509,6 +509,16 @@ class HTTPMetawebSession(MetawebSession):
                                headers=headers, body=body, form=form)
         return self._mqlresult(r)
 
+    def reconcile(self, name, etype=['/common/topic']):
+        """reconcile name to guid"""
+
+        service = '/dataserver/reconciliation'
+        r = self._httpreq_json(service, 'GET', form={'name':name, 'types':','.join(etype)})
+
+        
+        # TODO non-conforming service, fix later
+        #self._mqlresult(r)
+        return r
 
 if __name__ == '__main__':
     console = logging.StreamHandler()
