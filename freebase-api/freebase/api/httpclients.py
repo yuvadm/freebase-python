@@ -12,13 +12,18 @@ except:
 
 try:
     import urllib2
+    import socket
 except:
     pass
+
+import logging
+import re
 
 class Urllib2Client(object):
     def __init__(self, cookiejar):
         cookiespy = urllib2.HTTPCookieProcessor(cookiejar)
         self.opener = urllib2.build_opener(cookiespy)
+        self.log = logging.getLogger()
 
     def __call__(self, url, method, body, headers):
         req = urllib2.Request(url, body, headers)
@@ -31,6 +36,7 @@ class Urllib2Client(object):
             raise MetawebError, 'failed contacting %s: %s' % (url, str(e))
 
         except urllib2.HTTPError, e:
+            self.log.error('HTTP ERROR: %s', e)
             self._raise_service_error(url, e.code, e.info().type, e.fp.read())
 
         for header in resp.info().headers:
