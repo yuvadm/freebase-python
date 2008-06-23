@@ -1,4 +1,4 @@
-# ========================================================================
+# ==================================================================
 # Copyright (c) 2007, Metaweb Technologies, Inc.
 # All rights reserved.
 #
@@ -24,19 +24,19 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
-# ========================================================================
+# ====================================================================
 
-#
-#  declarations for external metaweb api.
-#
-#
-#    from metaweb.api import HTTPMetawebSession
-#
-#    mss = HTTPMetawebSession('sandbox.freebase.com')
-#    print mss.mqlread([dict(name=None, type='/type/type')])
-#
-#
-#
+"""
+declarations for external metaweb api.
+
+
+    from metaweb.api import HTTPMetawebSession
+
+    mss = HTTPMetawebSession('sandbox.freebase.com')
+    print mss.mqlread([dict(name=None, type='/type/type')])
+"""
+
+
 
 __all__ = ['MetawebError', 'MetawebSession', 'HTTPMetawebSession', 'attrdict']
 __version__ = '0.1'
@@ -54,6 +54,38 @@ except ImportError:
 import pprint
 import socket
 import logging
+
+class Delayed(object):
+    """
+    Wrapper for callables in log statements. Avoids actually making
+    the call until the result is turned into a string.
+
+    A few examples:
+
+    simplejson.dumps is never called because the logger never
+    tries to format the result
+    >>> logging.debug(Delayed(simplejson.dumps, q))
+
+    This time simplejson.dumps() is actually called:
+    >>> logging.warn(Delayed(simplejson.dumps, q))
+    
+    """
+    def __init__(self, f, *args, **kwds):
+        self.f = f
+        self.args = args
+        self.kwds = kwds
+
+    def __str__(self):
+        return str(self.f(*self.args, **self.kwds))
+    
+def logformat(result):
+    """
+    Format the dict/list as a json object
+    """
+    rstr = simplejson.dumps(result, indent=2)
+    if rstr[0] == '{':
+        rstr = rstr[1:-2]
+    return rstr
 
 from httpclients import Httplib2Client, Urllib2Client, UrlfetchClient
 
@@ -333,16 +365,12 @@ class HTTPMetawebSession(MetawebSession):
         if r.code != '/api/status/ok':
             for msg in r.messages:
                 self.log.error('mql error: %s %s %r' % (msg.code, msg.message, msg.get('query', None)))
-            raise MetawebError, 'query failed: %s %r' % (r.messages[0].code, r.messages[0].get('query', None))
+            raise MetawebError, 'query failed: %s\n%r' % (r.messages[0].code, r.messages[0].get('query', None))
 
     def _mqlresult(self, r):
         self._check_mqlerror(r)
 
-        # should check log level to avoid redundant simplejson.dumps
-        rstr = simplejson.dumps(r.result, indent=2)
-        if rstr[0] == '{':
-            rstr = rstr[1:-2]
-        self.log.info('result: %s', rstr)
+        self.log.info('result: %s', Delayed(logformat, r))
 
         return r.result
 
@@ -400,10 +428,9 @@ class HTTPMetawebSession(MetawebSession):
 
         service = '/api/service/mqlread'
 
-        # should check log level to avoid redundant simplejson.dumps
         self.log.info('%s: %s',
                       service,
-                      simplejson.dumps(sq, indent=2)[1:-2])
+                      Delayed(logformat, sq))
 
         qstr = simplejson.dumps(subq)
         r = self._httpreq_json(service, form=dict(query=qstr))
@@ -423,18 +450,16 @@ class HTTPMetawebSession(MetawebSession):
 
         service = '/api/service/mqlread'
 
-        # should check log level to avoid redundant simplejson.dumps
         self.log.info('%s: %s',
                       service,
-                      simplejson.dumps(envelope, indent=2)[1:-2])
+                      Delayed(logformat, envelope))
 
         qstr = simplejson.dumps(envelope)
         rs = self._httpreq_json(service, form=dict(queries=qstr))
 
-        # should check log level to avoid redundant simplejson.dumps
         self.log.info('%s result: %s',
                       service,
-                      simplejson.dumps(rs, indent=2))
+                      Delayed(simplejson.dumps, rs, indent=2))
 
         return [self._mqlresult(rs[key]) for key in keys]
 
@@ -459,10 +484,9 @@ class HTTPMetawebSession(MetawebSession):
 
         service = '/api/service/mqlwrite'
 
-        # should check log level to avoid redundant simplejson.dumps
         self.log.info('%s: %s',
                       service,
-                      simplejson.dumps(sq, indent=2)[1:-2])
+                      Delayed(logformat,sq))
 
         r = self._httpreq_json(service, 'POST',
                                form=dict(query=qstr))
@@ -470,6 +494,29 @@ class HTTPMetawebSession(MetawebSession):
         self.log.debug('MQLWRITE RESP: %r', r)
         return self._mqlresult(r)
 
+    def mqlcheck(self, sq):
+        """ See if a write is valid, and see what would happen, but do not
+        actually do the write """
+        
+        query = dict(query=sq, escape=False)
+        qstr = simplejson.dumps(query)
+
+        self.log.debug('MQLCHECK: %s', qstr)
+
+        service = '/api/service/mqlcheck'
+
+        self.log.info('%s: %s',
+                      service,
+                      Delayed(logformat, sq))
+
+        r = self._httpreq_json(service, 'POST',
+                               form=dict(query=qstr))
+
+
+        self.log.debug('MQLCHECK RESP: %r', r)
+
+        return self._mqlresult(r)
+    
     def mqlflush(self):
         """ask the service not to hand us old data"""
         self.log.debug('MQLFLUSH')
