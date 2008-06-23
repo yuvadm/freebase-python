@@ -34,7 +34,7 @@ except ImportError:
 
 setup(
     name='freebase',
-    version='0.2.3',
+    version='0.2.4',
     author='Nick Thompson',
     author_email='nix@metaweb.com',
     maintainer_email='developers@freebase.com',
@@ -45,6 +45,9 @@ setup(
     wrapper around the freebase.com service api, as well as some
     utility functions helpful in writing clients of the api.""",
     packages=['freebase', 'freebase.api'],
+    requires=[
+        "simplejson",
+        ],
     #download_url='xxx',   # provided by cheeseshop?
     classifiers=[
         'Development Status :: 3 - Alpha',
