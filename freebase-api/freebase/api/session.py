@@ -104,7 +104,6 @@ except ImportError:
         httplib2 = None
         CookiefulHttp = None
         http_client = Urllib2Client
-        print ('freebase.api: you can install httplib2 for better performance')
 
 # remove whitespace from json encoded output
 simplejson.JSONEncoder.item_separator = ','
