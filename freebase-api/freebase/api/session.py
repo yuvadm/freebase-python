@@ -521,13 +521,13 @@ class HTTPMetawebSession(MetawebSession):
         self.log.debug('MQLFLUSH')
     
         service = '/api/service/touch'
-        r = self._httpreq(service, 'POST', body='',
-                          headers={'content-type':'application/xml',
-                                   'content-length':'0'})
+        r = self._httpreq_json(service)
 
-        # TODO non-conforming service, fix later
-        #self._check_mqlerror(r)
+        self._check_mqlerror(r)
         return True
+
+    def touch(self):
+        return self.mqlflush()
 
     def upload(self, body, content_type, document_id=False):
         """upload to the metaweb"""
