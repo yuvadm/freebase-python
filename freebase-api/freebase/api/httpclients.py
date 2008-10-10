@@ -20,9 +20,10 @@ import logging
 import re
 
 class Urllib2Client(object):
-    def __init__(self, cookiejar):
+    def __init__(self, cookiejar, rse):
         cookiespy = urllib2.HTTPCookieProcessor(cookiejar)
         self.opener = urllib2.build_opener(cookiespy)
+        self._raise_service_error = rse
         self.log = logging.getLogger()
 
     def __call__(self, url, method, body, headers):
@@ -48,8 +49,9 @@ class Urllib2Client(object):
         return (resp, resp.read())
 
 class Httplib2Client(object):
-    def __init__(self, cookiejar):
+    def __init__(self, cookiejar, rse):
         self.cookiejar = cookiejar
+        self._raise_service_error = rse
         self.httpclient = CookiefulHttp(cookiejar=self.cookiejar)
 
     def __call__(self, url, method, body, headers):
@@ -74,8 +76,9 @@ class Httplib2Client(object):
 
 
 class UrlfetchClient(object):
-    def __init__(self, cookiejar):
+    def __init__(self, cookiejar, rse):
         self.cookiejar = cookiejar
+        self._raise_service_error = rse
         self.httpclient = CookiefulUrlfetch(cookiejar=self.cookiejar)
 
     def __call__(self, url, method, body, headers):

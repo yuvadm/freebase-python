@@ -214,7 +214,7 @@ class HTTPMetawebSession(MetawebSession):
         else:
             self.cookiejar = self._default_cookiejar
 
-        self._http_request = http_client(self.cookiejar)
+        self._http_request = http_client(self.cookiejar, self._raise_service_error)
 
 
     def open_cookie_file(self, cookiefile=None):
@@ -529,7 +529,7 @@ class HTTPMetawebSession(MetawebSession):
     def touch(self):
         return self.mqlflush()
 
-    def upload(self, body, content_type, document_id=False):
+    def upload(self, body, content_type, document_id=False, permission_of=False):
         """upload to the metaweb"""
 
         service = '/api/service/upload'
@@ -548,6 +548,11 @@ class HTTPMetawebSession(MetawebSession):
                 form = { 'document': '' }
             else:
                 form = { 'document': document_id }
+        if permission_of is not False:
+            if form:
+                form['permission_of'] = permission_of
+            else:
+                form = { 'permission_of' : permission_of }
 
         # note the use of both body and form.
         #  form parameters get encoded into the URL in this case
