@@ -46,7 +46,11 @@ import cookielib
 try:
     import simplejson
 except ImportError:
-    from django.utils import simplejson
+    try:
+        # appengine provides simplejson at django.utils.simplejson
+        from django.utils import simplejson
+    except ImportError:
+        raise Error("unable to import simplejson")
 try:
     from urllib import quote as urlquote
 except ImportError:
