@@ -34,7 +34,7 @@ except ImportError:
 
 setup(
     name='freebase',
-    version='0.2.4',
+    version='0.2.5',
     author='Nick Thompson',
     author_email='nix@metaweb.com',
     maintainer_email='developers@freebase.com',
@@ -44,7 +44,12 @@ setup(
     long_description="""A Python library providing a convenient
     wrapper around the freebase.com service api, as well as some
     utility functions helpful in writing clients of the api.""",
-    packages=['freebase', 'freebase.api'],
+    packages=['freebase', 'freebase.api', 'freebase.fcl'],
+    entry_points = {
+        'console_scripts': [
+            'fcl = freebase.fcl.fcl:main'
+        ]
+    },
     requires=[
         "simplejson",
         ],
