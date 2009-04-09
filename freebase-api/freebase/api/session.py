@@ -263,8 +263,7 @@ class HTTPMetawebSession(MetawebSession):
         else:
             headers = _normalize_headers(headers)
 
-        # XXX This is a lousy way to parse Content-Type, where is
-        #  the library?
+        # this is a lousy way to parse Content-Type, where is the library?
         ct = headers.get('content-type', None)
         if ct is not None:
             ct = ct.split(';')[0]
@@ -283,12 +282,11 @@ class HTTPMetawebSession(MetawebSession):
                     url += '?' + qstr
                 else:
                     if ct is None:
-                        # XXX encoding and stuff
                         ct = 'application/x-www-form-urlencoded'
-                        headers['content-type'] = ct
+                        headers['content-type'] = ct + '; charset=utf-8'
 
                     if ct == 'multipart/form-encoded':
-                        # XXX fixme
+                        # TODO handle this case
                         raise NotImplementedError
                     elif ct == 'application/x-www-form-urlencoded':
                         body = qstr
@@ -387,12 +385,9 @@ class HTTPMetawebSession(MetawebSession):
         
         self.log.debug('LOGIN USERNAME: %s', self.username)
         
-        try:
-            r = self._httpreq_json('/api/account/login', 'POST',
-                                   form=dict(username=self.username,
-                                             password=self.password))
-        except urllib2.HTTPError, e:
-            raise MetawebError("login error: %s", e)
+        r = self._httpreq_json('/api/account/login', 'POST',
+                               form=dict(username=self.username,
+                                         password=self.password))
 
         if r.code != '/api/status/ok':
             raise MetawebError(u'%s %r' % (r.get('code',''), r.messages))
