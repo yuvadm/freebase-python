@@ -96,14 +96,20 @@ def unquotekey(key, encoding=None):
     return ustr.encode(encoding)
 
 
+# should this also include "'()" into safe?
+def urlencode_pathseg(data):
+    '''
+    urlencode for placement between slashes in an url.
+    '''
+    if isinstance(data, unicode):
+        data = data.encode('utf_8')
+    return urllib.quote(data, "~:@$!*,;=&+")
+
 
 def id_to_urlid(id):
     """
     convert a mql id to an id suitable for embedding in a url path.
     """
-
-    # XXX shouldn't be in metaweb.api!
-    from mw.formats.http import urlencode_pathseg
 
     segs = id.split('/')
 
