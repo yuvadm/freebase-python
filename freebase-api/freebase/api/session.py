@@ -50,7 +50,7 @@ except ImportError:
         # appengine provides simplejson at django.utils.simplejson
         from django.utils import simplejson
     except ImportError:
-        raise Error("unable to import simplejson")
+        raise Exception("unable to import simplejson")
 try:
     from urllib import quote as urlquote
 except ImportError:
@@ -249,11 +249,9 @@ class HTTPMetawebSession(MetawebSession):
         on whether urllib2 or httplib2 is in use?
         """
 
-        if method == 'POST':
-            assert body is not None or form is not None
-        elif method == 'GET':
+        if method == 'GET':
             assert body is None
-        else:
+        if method != "GET" and method != "POST":
             assert 0, 'unknown method %s' % method
 
         url = self.service_url + service_path
@@ -273,7 +271,7 @@ class HTTPMetawebSession(MetawebSession):
             assert ct is not None
 
         if form is not None:
-            qstr = '&'.join(['%s=%s' % (urlencode_weak(k), urlencode_weak(v))
+            qstr = '&'.join(['%s=%s' % (urlencode_weak(unicode(k)), urlencode_weak(unicode(v)))
                              for k,v in form.items()])
             if method == 'POST':
                 # put the args on the url if we're putting something else
@@ -377,17 +375,23 @@ class HTTPMetawebSession(MetawebSession):
 
 
 
-    def login(self):
-        """sign in to the service"""
+    def login(self, username=None, password=None):
+        """sign in to the service. For a more complete description,
+        see http://www.freebase.com/view/en/api_account_login"""
 
-        assert self.username is not None
-        assert self.password is not None
+        service = '/api/account/login'
+
+        username = username or self.username
+        password = password or self.password
+
+        assert username is not None
+        assert password is not None
         
-        self.log.debug('LOGIN USERNAME: %s', self.username)
+        self.log.debug('LOGIN USERNAME: %s', username)
         
-        r = self._httpreq_json('/api/account/login', 'POST',
-                               form=dict(username=self.username,
-                                         password=self.password))
+        r = self._httpreq_json(service, 'POST',
+                               form=dict(username=username,
+                                         password=password))
 
         if r.code != '/api/status/ok':
             raise MetawebError(u'%s %r' % (r.get('code',''), r.messages))
@@ -395,9 +399,45 @@ class HTTPMetawebSession(MetawebSession):
         self.log.debug('LOGIN RESP: %r', r)
         self.log.debug('LOGIN COOKIES: %s', self.cookiejar)
 
+    def logout(self):
+        """logout of the service. For a more complete description,
+        see http://www.freebase.com/view/en/api_account_logout"""
+        
+        service = '/api/account/logout'
+        
+        self.log.debug("LOGOUT")
+        
+        r = self._httpreq_json(service, 'GET')
+        
+        if r.code != '/api/status/ok':
+            raise MetawebError(u'%s %r' % (r.get('code',''), r.messages)) #this should never happen
 
+    def user_info(self, mql_output=None):
+        """ get user_info. For a more complete description,
+        see http://www.freebase.com/view/en/api_service_user_info"""
+        
+        service = "/api/service/user_info"
+        
+        qstr = simplejson.dumps(mql_output)
+        
+        r = self._httpreq_json(service, 'POST', form=dict(mql_output=qstr))
+        return r
+    
+    def loggedin(self):
+        """check to see whether a user is logged in or not. For a
+        more complete description, see http://www.freebase.com/view/en/api_account_loggedin"""
+        
+        service = "/api/account/loggedin"
+        try:
+            r = self._httpreq_json(service, 'GET')
+            if r.code == "/api/status/ok":
+                return True
+                
+        except MetawebError, me:
+            return False
+        
     def mqlreaditer(self, sq, asof=None):
-        """read a structure query"""
+        """read a structure query."""
 
         cursor = True
 
@@ -422,7 +462,8 @@ class HTTPMetawebSession(MetawebSession):
                 return
 
     def mqlread(self, sq, asof=None):
-        """read a structure query"""
+        """read a structure query. For a more complete description,
+        see http://www.freebase.com/view/en/api_service_mqlread"""
         subq = dict(query=sq, escape=False)
         if asof:
             subq['as_of_time'] = asof
@@ -470,20 +511,56 @@ class HTTPMetawebSession(MetawebSession):
 
         return [self._mqlresult(rs[key]) for key in keys]
 
-    def trans(self, guid):
-        """translate blob from guid """
-        url = '/api/trans/raw' + urlquote(guid)
+    def raw(self, id):
+        """translate blob from id. For a more complete description,
+        see http://www.freebase.com/view/en/api_trans_raw"""
+        url = '/api/trans/raw' + urlquote(id)
 
         self.log.info(url)
 
         resp, body = self._httpreq(url)
 
-        self.log.info('%d bytes' % len(body))
+        self.log.info('raw is %d bytes' % len(body))
+
+        return body
+    
+    def blurb(self, id, break_paragraphs=False, maxlength=200):
+        """translate only the text in blob from id. For a more 
+        complete description, see http://www.freebase.com/view/en/api_trans_blurb"""
+        url = '/api/trans/blurb' + urlquote(id)
+
+        self.log.info(url)
+
+        resp, body = self._httpreq(url, form=dict(break_paragraphs=break_paragraphs, maxlength=maxlength))
+
+        self.log.info('blurb is %d bytes' % len(body))
 
         return body
 
+    def image_thumb(self, id, maxwidth=None, maxheight=None, mode="fit", onfail=None):
+        """ given the id of an image, this will return a URL of a thumbnail of the image.
+        The full details of how the image is cropped and finessed is detailed at 
+        http://www.freebase.com/view/en/api_trans_image_thumb """
+
+        service = "/api/trans/image_thumb"
+        assert mode in ["fit", "fill", "fillcrop", "fillcropmid"]
+        
+        form = dict(mode=mode)
+        if maxwidth is not None:
+            form["maxwidth"] = maxwidth
+        if maxheight is not None:
+            form["maxheight"] = maxheight
+        if onfail is not None:
+            form["onfail"] = onfail
+        
+        resp, body = self._httpreq(service + urlquote(id), form=form)
+        self.log.info('image is %d bytes' % len(body))
+        
+        return body
+
     def mqlwrite(self, sq):
-        """do a mql write"""
+        """do a mql write. For a more complete description,
+        see http://www.freebase.com/view/en/api_service_mqlwrite"""
         query = dict(query=sq, escape=False)
         qstr = simplejson.dumps(query)
 
@@ -535,10 +612,14 @@ class HTTPMetawebSession(MetawebSession):
         return True
 
     def touch(self):
+        """ make sure you are accessing the most recent data. For a more
+        complete description, see http://www.freebase.com/view/en/api_service_touch"""
         return self.mqlflush()
+    
 
     def upload(self, body, content_type, document_id=False, permission_of=False):
-        """upload to the metaweb"""
+        """upload to the metaweb. For a more complete description,
+        see http://www.freebase.com/view/en/api_service_upload"""
 
         service = '/api/service/upload'
 
@@ -568,8 +649,21 @@ class HTTPMetawebSession(MetawebSession):
                                headers=headers, body=body, form=form)
         return self._mqlresult(r)
 
+    
+    def version(self):
+        """ get versions for various parts of freebase. For a more
+        complete description, see http://www.freebase.com/view/en/api_version"""
+        
+        service = "/api/version"
+        r = self._httpreq_json(service)
+        
+        self._check_mqlerror(r)
+        return r
+    
+    ### DEPRECATED IN API
     def reconcile(self, name, etype=['/common/topic']):
-        """reconcile name to guid"""
+        """DEPRECATED: reconcile name to guid. For a more complete description,
+        see http://www.freebase.com/view/en/dataserver_reconciliation"""
 
         service = '/dataserver/reconciliation'
         r = self._httpreq_json(service, 'GET', form={'name':name, 'types':','.join(etype)})
@@ -578,6 +672,7 @@ class HTTPMetawebSession(MetawebSession):
         # TODO non-conforming service, fix later
         #self._mqlresult(r)
         return r
+    
 
 if __name__ == '__main__':
     console = logging.StreamHandler()
