@@ -12,7 +12,7 @@
 #       copyright notice, this list of conditions and the following
 #       disclaimer in the documentation and/or other materials provided
 #       with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY METAWEB TECHNOLOGIES ``AS IS'' AND ANY
 # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -59,12 +59,12 @@ class TestFreebase(unittest.TestCase):
         self.assertNotEqual(None, user_info)
         self.assertEqual(user_info.code, "/api/status/ok")
         self.assertEqual(mss.loggedin(), True)
-            
+        
         mss.logout()
         self.assertRaises(MetawebError, mss.user_info)
         self.assertEqual(mss.loggedin(), False)
-        
 
+    
     def test_freebase_dot_read(self):
         query = {'type':'/music/artist','guid':[{}],'name':'Sting', 'album':[{}]}
         
@@ -79,16 +79,16 @@ class TestFreebase(unittest.TestCase):
         self.assert_(len(result['album']) > 0)
         self.assertEqual( 'Sting', result['name'])
         self.assertEqual('#9202a8c04000641f8000000000092a01', result['guid'][0]['value'])
-        
+    
     def test_freebase_dot_write(self):
         read_query = {'type':'/music/artist','name':'Yanni\'s Cousin Tom', 'id':{}}
         
         freebase.sandbox.login(username=USERNAME, password=PASSWORD)
         result = freebase.sandbox.mqlread(read_query)
         self.assertEqual(None, result)
-
+        
         write_query = {'create':'unless_exists', 'type':'/music/artist','name':'Yanni'}
-
+        
         write_result = freebase.sandbox.mqlwrite(write_query)
         self.assertNotEqual(None, write_result)
         self.assert_(write_result.has_key('create'))
@@ -96,13 +96,13 @@ class TestFreebase(unittest.TestCase):
         self.assert_(write_result.has_key('name'))
         self.assertEqual('existed', write_result['create'])
         self.assertEqual('Yanni', write_result['name'])
-        self.assertEqual('/music/artist', write_result['type'])     
-
+        self.assertEqual('/music/artist', write_result['type'])
+    
     def test_read(self):
         query = {'type':'/music/artist','guid':[{}],'name':'Sting', 'album':[{}]}
-
+        
         mss = HTTPMetawebSession(API_HOST)
-
+        
         result = mss.mqlread(query)
         
         self.assertNotEqual(None, result)
@@ -114,17 +114,17 @@ class TestFreebase(unittest.TestCase):
         self.assert_(len(result['album']) > 0)
         self.assertEqual( 'Sting', result['name'])
         self.assertEqual('#9202a8c04000641f8000000000092a01', result['guid'][0]['value'])
-        
    
+    
     def test_write(self):
         read_query = {'type':'/music/artist','name':'Yanni\'s Cousin Tom', 'id':{}}
         mss = HTTPMetawebSession(API_HOST, username=USERNAME,
                                  password=PASSWORD)
         result = mss.mqlread(read_query)
         self.assertEqual(None, result)
-
+        
         write_query = {'create':'unless_exists', 'type':'/music/artist','name':'Yanni'}
-
+        
         mss.login()
         write_result = mss.mqlwrite(write_query)
         self.assertNotEqual(None, write_result)
@@ -134,7 +134,7 @@ class TestFreebase(unittest.TestCase):
         self.assertEqual('existed', write_result['create'])
         self.assertEqual('Yanni', write_result['name'])
         self.assertEqual('/music/artist', write_result['type'])
-   
+    
     def test_trans_blurb(self):
         kurt = "/en/kurt_vonnegut"
         
@@ -153,12 +153,12 @@ class TestFreebase(unittest.TestCase):
     
     def test_trans_raw(self):
         kurt = "/en/kurt_vonnegut"
-            
+        
         self.assertRaises(MetawebError, lambda: freebase.raw(kurt))
         
         r = freebase.mqlread({"id":kurt, "/common/topic/article":[{"id":None, "optional":True, "limit":1}]})
         raw = freebase.raw(r["/common/topic/article"][0].id)
-        self.assertNotEqual(len(raw), 0)  
+        self.assertNotEqual(len(raw), 0)
     
     def test_trans_image_thumb(self):
         kurt = "/en/kurt_vonnegut"
@@ -179,12 +179,58 @@ class TestFreebase(unittest.TestCase):
         self.assertEqual(freebase.sandbox.raw(response.id), my_text)
         # since it's text/plain, blurb should also be equal
         self.assertEqual(freebase.sandbox.blurb(response.id), my_text)
+    
+        
+    def is_kurt_there(self, results):
+        for result in results:
+            if result.name == "Kurt Vonnegut":
+                return True
+        return False
+    
+    
+    def test_search(self):
+        r0 = freebase.search("Kurt V")
+        self.assertEqual(self.is_kurt_there(r0), True)
+        
+        r1 = freebase.search("Kurt V", type=["/location/citytown"])
+        self.assertEqual(self.is_kurt_there(r1), False)
+        
+        r2 = freebase.search("Kurt V", type=["/location/citytown", "/music/artist"])
+        self.assertEqual(self.is_kurt_there(r2), False)
+        
+        self.assertNotEqual(len(r0), len(r1))
+        self.assertNotEqual(len(r0), len(r2))
+        self.assertNotEqual(len(r1), len(r2))
+    
+    def test_touch(self):
+        pass
+
+    
+    def test_geosearch(self):
+        
+        self.assertRaises(Exception, freebase.geosearch)
+        
+        r0 = freebase.geosearch(location="/en/california")
+        self.assertNotEqual(len(r0), 0)
         
         
+    
+        
+
 if __name__ == '__main__':
     if USERNAME == "username" and PASSWORD == "password":
-        print "In order to run the tests, we need to use a valid freebase username and password"
-        USERNAME = raw_input("Please enter your username: ")
-        PASSWORD = raw_input("Please enter your password (it'll appear in cleartext): ")
+        
+        try:
+            passwordfile = open("test/.password.txt", "r")
+            fh = passwordfile.read().split("\n")
+            USERNAME = fh[0]
+            PASSWORD = fh[1]
+            passwordfile.close()
+        
+        except Exception, e:
+            print "In order to run the tests, we need to use a valid freebase username and password"
+            USERNAME = raw_input("Please enter your username: ")
+            PASSWORD = raw_input("Please enter your password (it'll appear in cleartext): ")
+    
     unittest.main()
   

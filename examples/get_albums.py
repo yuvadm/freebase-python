@@ -27,7 +27,12 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # ========================================================================
 
-from freebase.api import HTTPMetawebSession, MetawebError
+import freebase
+
+print freebase.search("Kurt Vonnegut")
+
+
+#from freebase.api import HTTPMetawebSession, MetawebError
 
 #username='username'
 #password='password'
@@ -38,11 +43,11 @@ query = {    'type':'/music/artist',
          }
 #credentials = freebase.login(username, password)
 
-mss = HTTPMetawebSession('www.freebase.com')
-result = mss.mqlread(query)
+#mss = HTTPMetawebSession('www.freebase.com')
+#result = mss.mqlread(query)
 
-for album in result.album:
-    print album
+#for album in result.album:
+#    print album
 
 
 # output :
