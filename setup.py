@@ -50,7 +50,7 @@ setup(
             'fcl = freebase.fcl.fcl:main'
         ]
     },
-    requires=[
+    install_requires=[
         "simplejson",
         ],
     #download_url='xxx',   # provided by cheeseshop?
