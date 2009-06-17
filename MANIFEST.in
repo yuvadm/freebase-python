@@ -1,0 +1,3 @@
+recursive-include freebase *.py *.txt
+exclude metaweb.py
+
