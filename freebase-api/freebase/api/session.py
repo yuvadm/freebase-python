@@ -396,13 +396,16 @@ class HTTPMetawebSession(MetawebSession):
         self.log.debug('LOGIN COOKIES: %s', self.cookiejar)
 
 
-    def mqlreaditer(self, sq):
+    def mqlreaditer(self, sq, asof=None):
         """read a structure query"""
 
         cursor = True
 
         while 1:
             subq = dict(query=[sq], cursor=cursor, escape=False)
+            if asof:
+                subq['as_of_time'] = asof
+
             qstr = simplejson.dumps(subq)
 
             service = '/api/service/mqlread'
@@ -418,9 +421,12 @@ class HTTPMetawebSession(MetawebSession):
             else:
                 return
 
-    def mqlread(self, sq):
+    def mqlread(self, sq, asof=None):
         """read a structure query"""
         subq = dict(query=sq, escape=False)
+        if asof:
+            subq['as_of_time'] = asof
+
         if isinstance(sq, list):
             subq['cursor'] = True
 
@@ -435,12 +441,15 @@ class HTTPMetawebSession(MetawebSession):
 
         return self._mqlresult(r)
 
-    def mqlreadmulti(self, queries):
+    def mqlreadmulti(self, queries, asof=None):
         """read a structure query"""
         keys = [('q%d' % i) for i,v in enumerate(queries)];
         envelope = {}
         for i,sq in enumerate(queries):
             subq = dict(query=sq, escape=False)
+            if asof:
+                subq['as_of_time'] = asof
+
             # XXX put this back once mqlreadmulti is working in general
             #if isinstance(sq, list):
             #    subq['cursor'] = True
