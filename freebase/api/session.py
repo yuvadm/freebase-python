@@ -765,7 +765,7 @@ class HTTPMetawebSession(MetawebSession):
         service = "/api/version"
         r = self._httpreq_json(service)
         
-        return self._mqlresult(r)
+        return r
     
     ### DEPRECATED IN API
     def reconcile(self, name, etype=['/common/topic']):

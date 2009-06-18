@@ -228,7 +228,9 @@ class TestFreebase(unittest.TestCase):
         r = freebase.sandbox.uri_submit("http://datamob.org/media/detail_freebase.png")
         self.assertEqual(r['/type/content/media_type'], 'image/png')
         
-        
+    def test_version(self):
+        r = freebase.version()
+        self.assertNotEqual(len(r), 0)    
 
 if __name__ == '__main__':
     if USERNAME == "username" and PASSWORD == "password":
