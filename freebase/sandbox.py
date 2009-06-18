@@ -30,7 +30,7 @@
 import sys
 from freebase.api.session import HTTPMetawebSession
 
-base = HTTPMetawebSession("sandbox.freebase.com")
+_base = HTTPMetawebSession("sandbox.freebase.com")
 
 __all__ = ["HTTPMetawebSession"]
 
@@ -41,11 +41,11 @@ __all__ = ["HTTPMetawebSession"]
 # a little trick to refer to ourselves
 self = sys.modules[__name__]
 
-for funcname in dir(base):
+for funcname in dir(_base):
     
     # we only want the 'real' functions
     if not funcname.startswith("_"):
-        func = getattr(base, funcname)
+        func = getattr(_base, funcname)
         
         # let's make sure we're getting functions
         # instead of constants or whatever

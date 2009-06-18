@@ -5,7 +5,7 @@ import sandbox
 
 __all__ = ["HTTPMetawebSession", "sandbox"]
 
-base = HTTPMetawebSession("freebase.com")
+_base = HTTPMetawebSession("freebase.com")
 
 # we want to add base's functions to __init__.py
 # so that we can say freebase.func() and really
@@ -16,11 +16,11 @@ base = HTTPMetawebSession("freebase.com")
 # a world in and of itself 
 self = sys.modules[__name__]
 
-for funcname in dir(base):
+for funcname in dir(_base):
     
     # we only want the 'real' functions
     if not funcname.startswith("_"):
-        func = getattr(base, funcname)
+        func = getattr(_base, funcname)
         
         # let's make sure we're getting functions
         # instead of constants or whatever

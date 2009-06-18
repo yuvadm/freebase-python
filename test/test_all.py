@@ -203,7 +203,8 @@ class TestFreebase(unittest.TestCase):
         self.assertNotEqual(len(r1), len(r2))
     
     def test_touch(self):
-        pass
+        # this one's hard to test... let's just make sure it works.
+        freebase.touch()
 
     
     def test_geosearch(self):
@@ -213,8 +214,20 @@ class TestFreebase(unittest.TestCase):
         r0 = freebase.geosearch(location="/en/california")
         self.assertNotEqual(len(r0), 0)
         
+        json = freebase.geosearch(location="/en/san_francisco", format="json")
+        kml = freebase.geosearch(location="/en/san_francisco", format="kml")
+        self.assertNotEqual(json, kml)
         
     
+    def test_uri_submit(self):
+        # test a pdf
+        r = freebase.sandbox.uri_submit("http://www.jcbl.or.jp/game/nec/necfest07/nec2007_data/HayashiMiyake.pdf", content_type="application/pdf")
+        self.assertEqual(r['/type/content/media_type'], 'application/pdf')
+        
+        # test an image
+        r = freebase.sandbox.uri_submit("http://datamob.org/media/detail_freebase.png")
+        self.assertEqual(r['/type/content/media_type'], 'image/png')
+        
         
 
 if __name__ == '__main__':

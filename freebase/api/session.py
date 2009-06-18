@@ -650,6 +650,22 @@ class HTTPMetawebSession(MetawebSession):
         return self._mqlresult(r)
     
     
+    def uri_submit(self, URI, document=None, content_type=None):
+        """ submit a URI to freebase. For a more complete description,
+        see http://www.freebase.com/edit/topic/en/api_service_uri_submit """
+        
+        service = "/api/service/uri_submit"
+        
+        form = dict(uri=URI)
+        if document is not None:
+            form["document"] = document
+        if content_type is not None:
+            form["content_type"] = content_type
+        
+        r = self._httpreq_json(service, 'POST', form=form)
+        return self._mqlresult(r)
+        
+    
     def search(self, query, format=None, prefixed=None, limit=20, start=0,
                 type=None, type_strict="any", domain=None, domain_strict=None,
                 escape="html", timeout=None, mql_filter=None, mql_output=None):
