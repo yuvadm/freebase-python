@@ -1,0 +1,25 @@
+This is an example of a working google appengine setup. If you want to see it
+in action, go to http://freebase-images.appspot.com/
+
+If you are interested in incorporating the freebase-python library in your 
+google appengine, you should download the actual code that runs the library.
+If you say: 
+ svn checkout http://freebase-python.googlecode.com/svn/trunk/freebase freebase
+in the appengine folder, you'll be able to import freebase in your appengine
+code without any problems.
+
+In order to fully understand the example, an understanding of how appengine
+works and what it does is neccessary. 
+
+In this example, hello.py is the main program that controls four pages: 
+mainpage, name, recents, and info. Name takes an id and returns the name,
+recents gives back the most recent images viewed (this only works if you're
+using a google account), and info takes an id and returns a list of images.
+Mainpage operates most of what you see. index.html the django template that
+is rendered. 
+
+The freebase queries are not all the complicated. We have a few that simply 
+return the name of an object given the id. The most complicated one, the one
+that generates the images involves querying all the objects that are connected
+to the supplied object and getting their images.
+

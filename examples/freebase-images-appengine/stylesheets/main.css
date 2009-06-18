@@ -1,0 +1,24 @@
+body {
+  font-family: Helvetica, Georgia, sans-serif;
+  background-color: #eee;
+  width: 65%; margin: 0 auto; 
+}
+
+
+
+#input { text-align: center; border: 1px solid black; padding: 1em; margin: 1em 2em;}
+#images { border: 1px solid black; margin: 1em 2em; padding: 1em;}
+#footer { margin: 0 2em 1em; padding: .4em; background: #ddd; text-align: right;}
+#freebase { background: #ddd; margin: .5em 2em; padding: .5em; }
+
+img { margin: .5em; }
+a img { border: none;}
+
+h1 { font-size: 2em;}
+#q { font-size: 1em;}
+
+.fbs-ul { font-size: 1.3em;}
+
+a { color: blue; }
+a:visited { color:blue; }
+a:link { color: blue; }

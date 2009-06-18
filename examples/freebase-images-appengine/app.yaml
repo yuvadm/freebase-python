@@ -1,0 +1,15 @@
+application: freebase-images
+version: 1
+runtime: python
+api_version: 1
+
+handlers:
+- url: /css 
+  static_dir: stylesheets
+
+- url: /js
+  static_dir: javascript
+
+- url: /.*
+  script: hello.py
+

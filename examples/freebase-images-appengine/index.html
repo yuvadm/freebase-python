@@ -1,0 +1,76 @@
+<head>
+	<title>Freebase Images</title>
+	<link type="text/css" rel="stylesheet" href="/css/freebase-controls.css">
+	<link type="text/css" rel="stylesheet" href="/css/main.css">
+	
+	<script type="text/javascript" src="http://code.jquery.com/jquery-1.2.3.min.js"></script>
+	<script type="text/javascript" src="/js/freebase.suggest.js"></script>
+	<script type="text/javascript">
+		$(document).ready(function() {
+			$("#q").freebaseSuggest().bind("fb-select", function(e, data) {
+				id = data.id;
+				update_freebase();
+				window.location.hash = "#" + data.id;
+				insert_images(data.id);	
+			});
+			function insert_images(id) {
+				$("#images").text("Loading...");
+				$.get("info", {"id":id}, 
+					function(data) {
+					$("#images").text("");
+						$("#images").html(data);
+				});
+			};
+			function update_freebase() {
+				$("#onfreebase").attr("href", "http://www.freebase.com/view" + id);
+				$.get("name", {"id":id}, function(data){ $("#onfreebase").text(data); });
+				$.get("recents", function(data) { $("#recents").html(data); })
+			}
+			if(window.location.hash.length > 0 && $("#images").html().replace(/^\s+|\s+$/g, "").length == 0) {
+				id = window.location.hash.split("#")[1];
+				update_freebase();
+				insert_images(id);
+			}
+			else if(window.location.search.length > 0 && $("#images").html().replace(/^\s+|\s+$/g, "").length == 0) {
+				id = window.location.search.split("?id=")[1]
+				update_freebase();
+				insert_images(id);
+				
+			}
+		});
+	</script>
+</head>
+
+<html>
+  <body>
+    <div id="input">
+		<form>
+	  		<h1>Search: <input type="text" id="q" /></h1>
+			<div id="recents">
+			{% if user %}
+				{% if searches_avail %}
+					<strong>Your Recent Searches:</strong>
+					{% for search in searches %}
+						<a href="?id={{ search.id }}">{{ search.name }}</a>{% if not forloop.last %},{% endif %}
+					{% endfor %}
+				{% endif %}
+			{% else %}
+				<a href="{{ url }}">Login to Google</a> to keep track of your recent searches.
+			{% endif %}
+			</div>
+    	</form>
+	</div>
+	
+	<div id="freebase">
+		Get more information about <a id="onfreebase" href="http://www.freebase.com/view/">everything</a> on Freebase!
+	</div>
+	
+	<div id="images">
+		
+	</div>
+
+    <div id="footer">
+		Data and images from <a href="http://www.freebase.com">Freebase</a> | <a id="login" href="{{ url }}">{{ url_linktext }}</a>
+	</div>
+  </body>
+</html>
