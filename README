@@ -1,18 +1,67 @@
-These are two independent python libraries for use in
-accessing Freebase services from Python:
+description='Python client library for Freebase API service',
+maintainer_email='developers@freebase.com',
+url='http://www.freebase.com/',
 
-* metaweb-py is the older and simpler of the two.  It's an improved
-  version of the metaweb.py module originally developed by David
-  Flanagan as part of the original Freebase API documentation.
+INSTALL:
+ 
+	/usr/bin/python setup.py install
 
-  Pros: Single file, simpler.
+    When using freebase-python with Google AppEngine you will also need to
+    include the files in appengine_stubs with you AppEngine app.
 
-* freebase-api is a more ambitious library that is derived from
-  code developed by Nick Thompson for accessing freebase services.
+SYNOPSIS:
 
-  Pros: Does more.
+	#!/usr/bin/python 
 
-Both are available under a simple 2-clause BSD-style license that
+	import freebase
+
+	query = {    'type':'/music/artist',
+	             'name':'Sting',
+	             'album':[],
+	         }
+	freebase.mqlread(query)
+	
+	for album in result.album:
+		print album
+
+   ----- OR -----
+	
+	#!/usr/bin/python
+	
+	from freebase import HTTPMetawebSession, MetawebError
+
+	mss = HTTPMetawebSession('www.freebase.com')
+
+	query = {    'type':'/music/artist',
+	             'name':'Sting',
+	             'album':[],
+	         }
+
+	result = mss.mqlread(query)
+
+	for album in result.album:
+	    print album
+
+TESTING:
+	
+	cd test
+	/usr/bin/python test_all.py -v
+
+	test_login (__main__.TestFreebase) ... ok
+	test_read (__main__.TestFreebase) ... ok
+	test_write (__main__.TestFreebase) ... ok
+	....
+	
+	----------------------------------------------------------------------
+	Ran 12 tests in 0.691s
+
+	OK
+
+freebase-api is now the standard python api for accessing freebase.
+metaweb-py has now been deprecated and can only be found in older
+releases of freebase-api.
+
+freebase-api is available under a simple 2-clause BSD-style license that
 should allow you to reuse this code in both open-source and
 commercial projects.
 
