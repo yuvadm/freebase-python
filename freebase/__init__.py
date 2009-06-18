@@ -38,3 +38,6 @@ for funcname in dir(_base):
 # we don't want any self-referencing
 # business going. Plus, this is cleaner.
 del self
+
+# we want dir(freebase) to be clean
+del funcname, func
