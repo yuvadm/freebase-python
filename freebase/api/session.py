@@ -43,14 +43,33 @@ __version__ = '0.1'
 
 import os, sys, re
 import cookielib
+
+SEPARATORS = (",", ":")
+
+# json libraries rundown
+# jsonlib2 is the fastest, but it's written in C, so not as
+# accessible. json is included in python2.6. simplejson
+# is the same as json.
+
 try:
-    import simplejson
+    import jsonlib2 as json
+    print "using jsonlib2"
 except ImportError:
     try:
-        # appengine provides simplejson at django.utils.simplejson
-        from django.utils import simplejson
+        import json
+        print "using json"
     except ImportError:
-        raise Exception("unable to import simplejson")
+        try:
+            import simplejson as json
+            print "using simplejson"
+        except ImportError:
+            try:
+                # appengine provides simplejson at django.utils.simplejson
+                from django.utils import simplejson as json
+                print "using django.utils.simplejson"
+            except ImportError:
+                raise Exception("unable to import neither json, simplejson, jsonlib2, or django.utils.simplejson")
+
 try:
     from urllib import quote as urlquote
 except ImportError:
@@ -66,12 +85,12 @@ class Delayed(object):
     
     A few examples:
     
-    simplejson.dumps is never called because the logger never
+    json.dumps is never called because the logger never
     tries to format the result
-    >>> logging.debug(Delayed(simplejson.dumps, q))
+    >>> logging.debug(Delayed(json.dumps, q))
     
-    This time simplejson.dumps() is actually called:
-    >>> logging.warn(Delayed(simplejson.dumps, q))
+    This time json.dumps() is actually called:
+    >>> logging.warn(Delayed(json.dumps, q))
     
     """
     def __init__(self, f, *args, **kwds):
@@ -86,7 +105,7 @@ def logformat(result):
     """
     Format the dict/list as a json object
     """
-    rstr = simplejson.dumps(result, indent=2)
+    rstr = json.dumps(result, indent=2)
     if rstr[0] == '{':
         rstr = rstr[1:-2]
     return rstr
@@ -108,13 +127,6 @@ except ImportError:
         httplib2 = None
         CookiefulHttp = None
         http_client = Urllib2Client
-
-# remove whitespace from json encoded output
-simplejson.JSONEncoder.item_separator = ','
-simplejson.JSONEncoder.key_separator = ':'
-# don't escape slashes, we're not pasting into script tags here.
-if simplejson.encoder.ESCAPE_DCT.get('/', None) == r'\/':
-    simplejson.encoder.ESCAPE_DCT['/'] = '/'
 
 def urlencode_weak(s):
     return urlquote(s, safe=',/:$')
@@ -333,7 +345,7 @@ class HTTPMetawebSession(MetawebSession):
         resp, body = self._httpreq(*args, **kws)
         return self._loadjson(body)
     
-    def _loadjson(self, json):
+    def _loadjson(self, json_input):
         # TODO really this should be accomplished by hooking
         # simplejson to create attrdicts instead of dicts.
         def struct2attrdict(st):
@@ -348,14 +360,14 @@ class HTTPMetawebSession(MetawebSession):
                 return [struct2attrdict(li) for li in st]
             return st
         
-        if json == '':
+        if json_input == '':
             self.log.error('the empty string is not valid json')
             raise MetawebError('the empty string is not valid json')
         
         try:
-            r = simplejson.loads(json)
+            r = json.loads(json_input)
         except ValueError, e:
-            self.log.error('error parsing json string %r' % json)
+            self.log.error('error parsing json string %r' % json_input)
             raise MetawebError, 'error parsing JSON string: %s' % e
         
         return struct2attrdict(r)
@@ -418,7 +430,7 @@ class HTTPMetawebSession(MetawebSession):
         
         service = "/api/service/user_info"
         
-        qstr = simplejson.dumps(mql_output)
+        qstr = json.dumps(mql_output, separators=SEPARATORS)
         
         r = self._httpreq_json(service, 'POST', form=dict(mql_output=qstr))
         return r
@@ -446,7 +458,7 @@ class HTTPMetawebSession(MetawebSession):
             if asof:
                 subq['as_of_time'] = asof
             
-            qstr = simplejson.dumps(subq)
+            qstr = json.dumps(subq, separators=SEPARATORS)
             
             service = '/api/service/mqlread'
             
@@ -477,7 +489,7 @@ class HTTPMetawebSession(MetawebSession):
                       service,
                       Delayed(logformat, sq))
         
-        qstr = simplejson.dumps(subq)
+        qstr = json.dumps(subq, separators=SEPARATORS)
         r = self._httpreq_json(service, form=dict(query=qstr))
         
         return self._mqlresult(r)
@@ -502,12 +514,12 @@ class HTTPMetawebSession(MetawebSession):
                       service,
                       Delayed(logformat, envelope))
         
-        qstr = simplejson.dumps(envelope)
+        qstr = json.dumps(envelope, separators=SEPARATORS)
         rs = self._httpreq_json(service, form=dict(queries=qstr))
         
         self.log.info('%s result: %s',
                       service,
-                      Delayed(simplejson.dumps, rs, indent=2))
+                      Delayed(json.dumps, rs, indent=2))
         
         return [self._mqlresult(rs[key]) for key in keys]
     
@@ -562,7 +574,7 @@ class HTTPMetawebSession(MetawebSession):
         """do a mql write. For a more complete description,
         see http://www.freebase.com/view/en/api_service_mqlwrite"""
         query = dict(query=sq, escape=False)
-        qstr = simplejson.dumps(query)
+        qstr = json.dumps(query, separators=SEPARATORS)
         
         self.log.debug('MQLWRITE: %s', qstr)
         
@@ -583,7 +595,7 @@ class HTTPMetawebSession(MetawebSession):
         actually do the write """
         
         query = dict(query=sq, escape=False)
-        qstr = simplejson.dumps(query)
+        qstr = json.dumps(query, separators=SEPARATORS)
         
         self.log.debug('MQLCHECK: %s', qstr)
         
