@@ -53,20 +53,16 @@ SEPARATORS = (",", ":")
 
 try:
     import jsonlib2 as json
-    print "using jsonlib2"
 except ImportError:
     try:
         import json
-        print "using json"
     except ImportError:
         try:
             import simplejson as json
-            print "using simplejson"
         except ImportError:
             try:
                 # appengine provides simplejson at django.utils.simplejson
                 from django.utils import simplejson as json
-                print "using django.utils.simplejson"
             except ImportError:
                 raise Exception("unable to import neither json, simplejson, jsonlib2, or django.utils.simplejson")
 
