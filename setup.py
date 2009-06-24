@@ -27,14 +27,26 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # ========================================================================
 
+import sys
+
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
 
+
+# if python version < 2.6, require simplejson
+# if python version >= 2.6, it comes with json
+
+json = []
+
+major, minor, micro, releaselevel, serial = sys.version_info
+if major <= 2 and minor < 6:
+   json.append("simplejson")
+
 setup(
     name='freebase',
-    version='0.4',
+    version='0.5',
     author='Nick Thompson',
     author_email='nix@metaweb.com',
     maintainer_email='developers@freebase.com',
@@ -50,9 +62,7 @@ setup(
             'fcl = freebase.fcl.fcl:main'
         ]
     },
-    install_requires=[
-        "simplejson",
-        ],
+    install_requires=[] + json,
     #download_url='xxx',   # provided by cheeseshop?
     classifiers=[
         'Development Status :: 3 - Alpha',
