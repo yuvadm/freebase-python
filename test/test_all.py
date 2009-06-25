@@ -230,7 +230,12 @@ class TestFreebase(unittest.TestCase):
         
     def test_version(self):
         r = freebase.version()
-        self.assertNotEqual(len(r), 0)    
+        self.assertNotEqual(len(r), 0)
+       
+    def test_status(self):
+        r = freebase.status()
+        self.assertNotEqual(len(r), 0)
+        self.assertEqual(r["status"], u"200 OK")
 
 if __name__ == '__main__':
     if USERNAME == "username" and PASSWORD == "password":

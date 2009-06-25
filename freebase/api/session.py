@@ -422,7 +422,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def user_info(self, mql_output=None):
         """ get user_info. For a more complete description,
-        see http://www.freebase.com/view/en/api_service_user_info"""
+        see http://www.freebase.com/view/guid/9202a8c04000641f800000000c36a842"""
         
         service = "/api/service/user_info"
         
@@ -448,6 +448,7 @@ class HTTPMetawebSession(MetawebSession):
         """read a structure query."""
         
         cursor = True
+        service = '/api/service/mqlread'
         
         while 1:
             subq = dict(query=[sq], cursor=cursor, escape=False)
@@ -455,9 +456,7 @@ class HTTPMetawebSession(MetawebSession):
                 subq['as_of_time'] = asof
             
             qstr = json.dumps(subq, separators=SEPARATORS)
-            
-            service = '/api/service/mqlread'
-            
+                        
             r = self._httpreq_json(service, form=dict(query=qstr))
             
             for item in self._mqlresult(r):
@@ -775,6 +774,15 @@ class HTTPMetawebSession(MetawebSession):
         
         return r
     
+    def status(self):
+       """ get the status for various parts of freebase. For a more
+       complete description, see http://www.freebase.com/view/en/api_status """
+       
+       service = "/api/status"
+       r = self._httpreq_json(service)
+       
+       return r
+
     ### DEPRECATED IN API
     def reconcile(self, name, etype=['/common/topic']):
         """DEPRECATED: reconcile name to guid. For a more complete description,
