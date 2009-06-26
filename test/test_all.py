@@ -115,6 +115,16 @@ class TestFreebase(unittest.TestCase):
         self.assertEqual( 'Sting', result['name'])
         self.assertEqual('#9202a8c04000641f8000000000092a01', result['guid'][0]['value'])
    
+    def test_ridiculously_long_write(self):
+        
+        q = [{
+         "id":None,
+         "id|=":["/guid/9202a8c04000641f80000000000" + str(a) for a in range(10000,10320)]
+        }]
+
+        self.assert_(len(str(q)), 1024)
+        self.assertNotEqual(len(freebase.mqlread(q)), 0)
+
     
     def test_write(self):
         read_query = {'type':'/music/artist','name':'Yanni\'s Cousin Tom', 'id':{}}
@@ -236,6 +246,25 @@ class TestFreebase(unittest.TestCase):
         r = freebase.status()
         self.assertNotEqual(len(r), 0)
         self.assertEqual(r["status"], u"200 OK")
+
+    
+    def test_private_domains(self):
+        freebase.sandbox.login(username=USERNAME, password=PASSWORD)
+        r = freebase.sandbox.create_private_domain("superfly" + str(int(random.random() * 1e10)), "Superfly!")
+        
+        q = {"id" : r["domain_id"], "*" : None}
+        info = freebase.sandbox.mqlread(q)
+        self.assertEqual(info["type"], ["/type/domain"])
+        self.assertNotEqual(len(info["key"]), 0)
+        self.assertEqual(info["attribution"], info["creator"])
+        
+        freebase.sandbox.delete_private_domain(info["key"][0])
+        deleted = freebase.sandbox.mqlread(q)
+        self.assertEqual(len(deleted["key"]), 0)
+        self.assertEqual(len(deleted["type"]), 0)
+        self.assertEqual(deleted["name"], None)
+        self.assertEqual(deleted["creator"], info["attribution"])
+        
 
 if __name__ == '__main__':
     if USERNAME == "username" and PASSWORD == "password":

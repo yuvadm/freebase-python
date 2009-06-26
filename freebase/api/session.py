@@ -39,7 +39,7 @@ declarations for external metaweb api.
 
 
 __all__ = ['MetawebError', 'MetawebSession', 'HTTPMetawebSession', 'attrdict']
-__version__ = '0.1'
+__version__ = '0.5'
 
 import os, sys, re
 import cookielib
@@ -324,6 +324,12 @@ class HTTPMetawebSession(MetawebSession):
         self.log.info('%s %s%s%s', method, url, formstr, headerstr)
         #######
         
+        # just in case you decide to make SUPER ridiculous GET queries:
+        if len(url) > 1000 and method == "GET":
+            method = "POST"
+            url, body = url.split("?")
+            
+                
         return self._http_request(url, method, body, headers)
     
     def _raise_service_error(self, url, status, ctype, body):
@@ -443,6 +449,28 @@ class HTTPMetawebSession(MetawebSession):
         
         except MetawebError, me:
             return False
+
+    def create_private_domain(self, domain_key, display_name):
+        """ create a private domain. For a more complete description,
+        see http://www.freebase.com/edit/topic/en/api_service_create_private_domain"""
+        
+        service = "/api/service/create_private_domain"
+        
+        form = dict(domain_key=domain_key, display_name=display_name)
+        
+        r = self._httpreq_json(service, 'POST', form=form)
+        return r
+    
+    
+    def delete_private_domain(self, domain_key):
+        """ create a private domain. For a more complete description,
+        see http://www.freebase.com/edit/topic/en/api_service_delete_private_domain"""
+        
+        service = "/api/service/delete_private_domain"
+        
+        form = dict(domain_key=domain_key)
+        
+        return self._httpreq_json(service, 'POST', form=form)
     
     def mqlreaditer(self, sq, asof=None):
         """read a structure query."""
