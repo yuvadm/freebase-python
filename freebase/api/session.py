@@ -593,10 +593,13 @@ class HTTPMetawebSession(MetawebSession):
         
         return body
     
-    def mqlwrite(self, sq):
+    def mqlwrite(self, sq, use_permission_of=None):
         """do a mql write. For a more complete description,
         see http://www.freebase.com/view/en/api_service_mqlwrite"""
         query = dict(query=sq, escape=False)
+        if use_permission_of:
+            query['use_permission_of'] = use_permission_of
+
         qstr = json.dumps(query, separators=SEPARATORS)
         
         self.log.debug('MQLWRITE: %s', qstr)
