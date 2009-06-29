@@ -169,6 +169,23 @@ class TestFreebase(unittest.TestCase):
         r = freebase.mqlread({"id":kurt, "/common/topic/article":[{"id":None, "optional":True, "limit":1}]})
         raw = freebase.raw(r["/common/topic/article"][0].id)
         self.assertNotEqual(len(raw), 0)
+
+        # trans should also work
+        trans = freebase.trans(r["/common/topic/article"][0].id)
+        self.assertEqual(trans, raw)
+    
+    def test_unsafe(self):
+        kurt = "/en/kurt_vonnegut"
+        
+        self.assertRaises(MetawebError, lambda: freebase.unsafe(kurt))
+        
+        r = freebase.mqlread({"id":kurt, "/common/topic/article":[{"id":None, "optional":True, "limit":1}]})
+        unsafe = freebase.unsafe(r["/common/topic/article"][0].id)
+        self.assertNotEqual(len(unsafe), 0)
+        
+        # we need an example of getting unsafe data
+        # ...
+        
     
     def test_trans_image_thumb(self):
         kurt = "/en/kurt_vonnegut"
