@@ -327,9 +327,10 @@ class HTTPMetawebSession(MetawebSession):
         # just in case you decide to make SUPER ridiculous GET queries:
         if len(url) > 1000 and method == "GET":
             method = "POST"
-            url, body = url.split("?")
-            
-                
+            url, body = url.split("?") 
+            ct = 'application/x-www-form-urlencoded'
+            headers['content-type'] = ct + '; charset=utf-8'
+           
         return self._http_request(url, method, body, headers)
     
     def _raise_service_error(self, url, status, ctype, body):
