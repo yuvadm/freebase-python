@@ -379,7 +379,7 @@ class HTTPMetawebSession(MetawebSession):
         if r.code != '/api/status/ok':
             for msg in r.messages:
                 self.log.error('mql error: %s %s %r' % (msg.code, msg.message, msg.get('query', None)))
-            raise MetawebError, 'query failed: %s\n%r' % (r.messages[0].code, r.messages[0].get('query', None))
+            raise MetawebError, 'query failed: %s\n%s\n%s' % (r.messages[0].code, r.messages[0].message, json.dumps(r.messages[0].get('query', None), indent=2))
     
     def _mqlresult(self, r):
         self._check_mqlerror(r)
@@ -547,6 +547,9 @@ class HTTPMetawebSession(MetawebSession):
         
         return [self._mqlresult(rs[key]) for key in keys]
     
+    def trans(self, guid):
+        return self.raw(guid)
+    
     def raw(self, id):
         """translate blob from id. For a more complete description,
         see http://www.freebase.com/view/en/api_trans_raw"""
@@ -570,6 +573,18 @@ class HTTPMetawebSession(MetawebSession):
         resp, body = self._httpreq(url, form=dict(break_paragraphs=break_paragraphs, maxlength=maxlength))
         
         self.log.info('blurb is %d bytes' % len(body))
+        
+        return body
+    
+    def unsafe(self, id):
+        """ unsafe raw """
+        url = '/api/trans/unsafe' + urlquote(id)
+        
+        self.log.info(url)
+        
+        resp, body = self._httpreq(url, headers={'x-metaweb-request' : 'Python'})
+        
+        self.log.info('unsafe is %d bytes' % len(body))
         
         return body
     
