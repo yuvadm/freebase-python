@@ -8,7 +8,7 @@ from type_creation import create_type, create_property, delegate_property, recip
 from freebase.api  import HTTPMetawebSession, MetawebError
 
 s = HTTPMetawebSession("http://sandbox-freebase.com")
-s.login("nitromaster101", "something")
+s.login(USERNAME, PASSWORD)
 
 import time
 

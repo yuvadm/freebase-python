@@ -8,7 +8,7 @@ from freebase.api import HTTPMetawebSession, MetawebError
 
 from freebase.api import LITERAL_TYPE_IDS
 
-mss = HTTPMetawebSession( 'sandbox.freebase.com', 'nitromaster101@gmail.com', 'something' )
+mss = HTTPMetawebSession( 'sandbox.freebase.com', USERNAME, PASSWORD )
 mss.login()
 
 def key_exists( s, k ):
