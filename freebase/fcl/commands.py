@@ -686,3 +686,14 @@ def cmd_log(fb, id):
         print simplejson.dumps(link, indent=2)
 
     
+
+def cmd_search(fb, what):
+    """Search freebase for "query" and print out 10 matching ids
+    
+    %prog search "some query" 
+    """
+        
+    r = fb.mss.search(what, format="ids", limit=10)
+    for id in r:    
+        print id
+    
