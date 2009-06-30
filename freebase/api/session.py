@@ -844,6 +844,13 @@ class HTTPMetawebSession(MetawebSession):
         return r
 
 
+    
+    # Special things in API
+    def create_object(self, id):
+        pass
+
+
+
 if __name__ == '__main__':
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
