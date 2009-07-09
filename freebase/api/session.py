@@ -74,6 +74,22 @@ import pprint
 import socket
 import logging
 
+LITERAL_TYPE_IDS = set([
+  "/type/int",
+  "/type/float",
+  "/type/boolean",
+  "/type/rawstring",
+  "/type/uri",
+  "/type/text",
+  "/type/datetime",
+  "/type/bytestring",
+  "/type/id",
+  "/type/key",
+  "/type/value",
+  "/type/enumeration"
+])
+
+
 class Delayed(object):
     """
     Wrapper for callables in log statements. Avoids actually making
@@ -149,6 +165,7 @@ class attrdict(dict):
     TypeError: 'int' object is not callable
     """
     def __init__(self, *args, **kwargs):
+        # adds the *args and **kwargs to self (which is a dict)
         dict.__init__(self, *args, **kwargs)
         self.__dict__ = self
 
@@ -342,7 +359,7 @@ class HTTPMetawebSession(MetawebSession):
             msg = r.messages[0]
             raise MetawebError(u'%s %s %r' % (msg.get('code',''), msg.message, msg.info))
         
-        raise MetawebError, 'request failed: %s: %r %r' % (url, status, body)
+        raise MetawebError, 'request failed: %s: %s\n%s' % (url, status, body)
     
     def _httpreq_json(self, *args, **kws):
         resp, body = self._httpreq(*args, **kws)
@@ -843,12 +860,91 @@ class HTTPMetawebSession(MetawebSession):
         #self._mqlresult(r)
         return r
 
+    ### SCHEMA MANIPULATION ###
+    # Object helpers
+    def create_object(self, name="", path=None, key=None, namespace=None, included_types=None, create="unless_exists", extra=None):
+        if type(included_types) is str:
+            included_types = [included_types]
 
+        if path and (key or namespace):
+            raise Exception("You can't specify both the path and a key and namespace.")
+
+        if path:
+            key, namespace = get_key_namespace(path)
+
+
+        if included_types:
+            its = set(included_types)
+            q = [{
+                "id|=" : included_types,
+                "/freebase/type_hints/included_types" : [{"id" : None}]
+            }]
+            for res in self.mqlread(q):
+                its.update(map(lambda x: x["id"], res["/freebase/type_hints/included_types"]))
+
+        wq = {
+            "id" : None,
+            "name" : name,
+            "key" : {
+                "namespace" : namespace,
+                "value" : key,
+            },
+            "create" : create
+        }
+
+        if included_types:
+            wq.update(type = [{ "id" : it, "connect" : "insert" } for it in its])
+
+        if extra: 
+            wq.update(extra)
+
+        return self.mqlwrite(wq)
+
+
+    def connect_object(self, id, newpath, extra=None):
+
+        key, namespace = get_key_namespace(newpath)
+
+        wq = {
+            "id" : id,
+            "key" : {
+                "namespace" : namespace,
+                "value" : key,
+                "connect" : "insert"
+            }
+        }
+
+        if extra: wq.update(extra)
+
+        return self.mqlwrite(wq)
+
+
+    def disconnect_object(self, id, extra=None):
+
+        key, namespace = get_key_namespace(id)
+
+        wq = {
+            "id" : id,
+            "key" : {
+                "namespace" : namespace,
+                "value" : key,
+                "connect" : "delete"
+            }
+        }
+        if extra: wq.update(extra)
+        return self.mqlwrite(wq)
+
+    def move_object(self, oldpath, newpath):
+        a = self.connect_object(oldpath, newpath)
+        b = self.disconnect_object(oldpath)
+        return a, b
     
-    # Special things in API
-    def create_object(self, id):
-        pass
 
+
+def get_key_namespace(path):
+    # be careful with /common
+    namespace, key = path.rsplit("/", 1)
+    return (key, namespace or "/")
 
 
 if __name__ == '__main__':

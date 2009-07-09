@@ -40,8 +40,28 @@ PASSWORD = 'password'
 API_HOST = 'sandbox.freebase.com'
 TEST_QUERY = {'id': 'null', 'name': 'Sting'}
 
+s = HTTPMetawebSession(API_HOST)
+
+if USERNAME == "username" and PASSWORD == "password":
+    try:
+        passwordfile = open("test/.password.txt", "r")
+        fh = passwordfile.read().split("\n")
+        USERNAME = fh[0]
+        PASSWORD = fh[1]
+        passwordfile.close()
+        s.login(USERNAME, PASSWORD)
+
+    except Exception, e:
+        print "FREEBASEIn order to run the tests, we need to use a valid freebase username and password"
+        USERNAME = raw_input("Please enter your username: ")
+        PASSWORD = raw_input("Please enter your password (it'll appear in cleartext): ")
+        s.login(USERNAME, PASSWORD)
+        print "Thanks!"
+
+else:
+    s.login(USERNAME, PASSWORD)
+
 class TestFreebase(unittest.TestCase):
-    
     def test_freebase_dot_login_logout(self):
         freebase.login(username=USERNAME, password=PASSWORD)
         self.assertNotEqual(freebase.user_info(), None)
@@ -128,8 +148,7 @@ class TestFreebase(unittest.TestCase):
     
     def test_write(self):
         read_query = {'type':'/music/artist','name':'Yanni\'s Cousin Tom', 'id':{}}
-        mss = HTTPMetawebSession(API_HOST, username=USERNAME,
-                                 password=PASSWORD)
+        mss = HTTPMetawebSession(API_HOST, username=USERNAME, password=PASSWORD)
         result = mss.mqlread(read_query)
         self.assertEqual(None, result)
         
@@ -284,19 +303,5 @@ class TestFreebase(unittest.TestCase):
         
 
 if __name__ == '__main__':
-    if USERNAME == "username" and PASSWORD == "password":
-        
-        try:
-            passwordfile = open("test/.password.txt", "r")
-            fh = passwordfile.read().split("\n")
-            USERNAME = fh[0]
-            PASSWORD = fh[1]
-            passwordfile.close()
-        
-        except Exception, e:
-            print "In order to run the tests, we need to use a valid freebase username and password"
-            USERNAME = raw_input("Please enter your username: ")
-            PASSWORD = raw_input("Please enter your password (it'll appear in cleartext): ")
-    
     unittest.main()
-  
+

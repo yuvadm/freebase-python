@@ -35,14 +35,19 @@ except ImportError:
     from distutils.core import setup
 
 
-# if python version < 2.6, require simplejson
-# if python version >= 2.6, it comes with json
-
 json = []
 
-major, minor, micro, releaselevel, serial = sys.version_info
-if major <= 2 and minor < 6:
-   json.append("simplejson")
+# if jsonlib2 is already installed, then we're fine
+# we don't need anything else
+try:
+    import jsonlib2
+except ImportError:
+    # if python version < 2.6, require simplejson
+    # if python version >= 2.6, it comes with json
+
+    major, minor, micro, releaselevel, serial = sys.version_info
+    if major <= 2 and minor < 6:
+       json.append("simplejson")
 
 setup(
     name='freebase',
@@ -59,11 +64,14 @@ setup(
     packages=['freebase', 'freebase.api', 'freebase.fcl'],
     entry_points = {
         'console_scripts': [
-            'fcl = freebase.fcl.fcl:main'
+            'fcl = freebase.fcl.fcl:main',
+            'fb_save_base = freebase.schema.cmd:fb_save_base',
+            'fb_save_type = freebase.schena.cmd:fb_save_type',
+            'fb_restore = freebase.schema.cmd:fb_restore'
         ]
     },
+    test_suite = "test.runtests.main",
     install_requires=[] + json,
-    #download_url='xxx',   # provided by cheeseshop?
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
