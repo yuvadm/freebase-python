@@ -28,36 +28,17 @@ def main():
     import test_freebase
     import test_schema_manipulation
 
-    # test_freebase.TestFreebase, 
-    testcases = [test_schema_manipulation.TestSchemaManipulation, test_freebase.TestFreebase]
-    testcases_dumb = [test_freebase.TestFreebase, test_schema_manipulation.TestSchemaManipulation]
-    
-    
-    suites = [unittest.TestLoader().loadTestsFromTestCase(x)
-                    for x in testcases]
-    
-    
-    suites_dumb = [unittest.TestLoader().loadTestsFromTestCase(x)
-                    for x in testcases_dumb]
-    
-    print sorted(suites)
-    print sorted(suites_dumb)
-    print sorted(suites) == sorted(suites_dumb)
-    
-    print
-    
-    print "SUITES", suites
-
-
     s1 = unittest.TestLoader().loadTestsFromTestCase(test_freebase.TestFreebase)
     s2 = unittest.TestLoader().loadTestsFromTestCase(test_schema_manipulation.TestSchemaManipulation)
     
-    anotherrun = unittest.TestSuite([s1, s2])
+    # This is very strange. If you try to do [s1, s2], thereby running freebase tests first, 
+    # two tests in the testschemamanipulation file fail! They fail because of caching issues; if
+    # I check on freebase, the changes are actually there. I have racked my mind for explanations.
+    anotherrun = unittest.TestSuite([s2, s1])
     
     #run = unittest.TestSuite(suites)
     
     # delete password stuff
-    
     if created: os.remove(passwordfile)  
     
     return anotherrun
