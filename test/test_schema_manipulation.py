@@ -4,35 +4,23 @@ import freebase
 import random
 import time
 
+import getlogindetails
+
 from freebase.api import HTTPMetawebSession, MetawebError
 from freebase.schema import create_type, reciprocate_property, delegate_property
 from freebase.schema import create_property, type_object, copy_property, move_property
 
 USERNAME = 'username'
 PASSWORD = 'password'
-API_HOST = 'sandbox.freebase.com'
+API_HOST = 'http://sandbox-freebase.com'
 
 s = freebase.api.HTTPMetawebSession(API_HOST)
 domain_id = None
 
 if USERNAME == "username" and PASSWORD == "password":
-    try:
-        passwordfile = open("test/.password.txt", "r")
-        fh = passwordfile.read().split("\n")
-        USERNAME = fh[0]
-        PASSWORD = fh[1]
-        passwordfile.close()
-        s.login(USERNAME, PASSWORD)
+    USERNAME, PASSWORD = getlogindetails.main()
 
-    except Exception, e:
-        print "SCHEMAIn order to run the tests, we need to use a valid freebase username and password"
-        USERNAME = raw_input("Please enter your username: ")
-        PASSWORD = raw_input("Please enter your password (it'll appear in cleartext): ")
-        s.login(USERNAME, PASSWORD)
-        print "Thanks!"
-
-else:
-    s.login(USERNAME, PASSWORD)
+s.login(USERNAME, PASSWORD)
 
 r = s.create_private_domain("test" + str(int(random.random() * 1e10)), "test")["domain_id"]
 domain_id = s.mqlread({"id" : r, "a:id" : None})["a:id"]
@@ -48,16 +36,23 @@ class TestSchemaManipulation(unittest.TestCase):
         self.assertEqual(a.create, "created")
         
         b = s.create_object("B", path=domain_id + "/b", included_types=["/people/person"])
+        print s.cookiejar._cookies["sandbox-freebase.com"]
+        
         q = { "id" : b.id, "type" : [{"id" : None}] }
         types = map(f, s.mqlread(q)["type"])
         self.assertEqual("/common/topic" in types, True)
         self.assertEqual("/people/person" in types, True)
         self.assertEqual("/film/actor" in types, False)
-        s.touch(), time.sleep(2), s.touch(); 
+        s.touch(), time.sleep(2), s.touch();
+        print s.cookiejar._cookies["sandbox-freebase.com"]
         type_object(s, b.id, "/film/film_genre")
+        print s.cookiejar._cookies["sandbox-freebase.com"]
+        
         s.touch(), time.sleep(2), s.touch(); 
-        s.mqlwrite({"id" : b.id, "/film/film_genre/films_in_this_genre" : {"id" : "/en/the_taking_of_pelham_1_2_3", "connect" : "insert"}})
+        #s.mqlwrite({"id" : b.id, "/film/film_genre/films_in_this_genre" : {"id" : "/en/the_taking_of_pelham_1_2_3", "connect" : "insert"}})
         types = map(f, s.mqlread(q)["type"])
+        print s.cookiejar._cookies["sandbox-freebase.com"]
+        
         s.touch(), time.sleep(2), s.touch(); 
         print types
         

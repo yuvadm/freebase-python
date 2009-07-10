@@ -32,34 +32,22 @@ import sys, logging
 import freebase
 import random
 
+import getlogindetails
+
 from freebase.api import HTTPMetawebSession, MetawebError
 
 
 USERNAME = 'username'
 PASSWORD = 'password'
-API_HOST = 'sandbox.freebase.com'
+API_HOST = 'http://sandbox-freebase.com'
 TEST_QUERY = {'id': 'null', 'name': 'Sting'}
 
 s = HTTPMetawebSession(API_HOST)
 
 if USERNAME == "username" and PASSWORD == "password":
-    try:
-        passwordfile = open("test/.password.txt", "r")
-        fh = passwordfile.read().split("\n")
-        USERNAME = fh[0]
-        PASSWORD = fh[1]
-        passwordfile.close()
-        s.login(USERNAME, PASSWORD)
+    USERNAME, PASSWORD = getlogindetails.main()
 
-    except Exception, e:
-        print "FREEBASEIn order to run the tests, we need to use a valid freebase username and password"
-        USERNAME = raw_input("Please enter your username: ")
-        PASSWORD = raw_input("Please enter your password (it'll appear in cleartext): ")
-        s.login(USERNAME, PASSWORD)
-        print "Thanks!"
-
-else:
-    s.login(USERNAME, PASSWORD)
+s.login(USERNAME, PASSWORD)
 
 class TestFreebase(unittest.TestCase):
     def test_freebase_dot_login_logout(self):

@@ -143,7 +143,8 @@ def create_type(s, name, key, ns, cvt=None, tip=None, included=None, extra=None)
 # Create Property
 def create_property(s, name, key, schema, expected, unique=False, disambig=False, tip=None, extra=None):
     if key_exists(s, schema + "/" + key):
-        raise Exception("The key \"%s\" already exists!" % (schema + "/" + key))
+        # this isn't (neccesarily) a problem
+        # raise Exception("The key \"%s\" already exists!" % (schema + "/" + key))
         return
 
     # validate parameters str
@@ -251,25 +252,20 @@ def reciprocate_property(s, name, key, master, unique=False, disambig=False, tip
 # upload / restore types
 def dump_base(s, base_id):
     types = map(lambda x: x["id"], s.mqlread({"id" : base_id, "/type/domain/types":[{"id" : None}]})["/type/domain/types"])
-    graph = _get_graph(types)
+    graph = _get_graph(s, types, True)
     graph["__follow_types"] = True
     
     return graph
 
 def dump_type(s, type_id, follow_types=True):
     types = [type_id]
-    graph = _get_graph(types, follow_types)
+    graph = _get_graph(s, types, follow_types)
     graph["__follow_types"] = follow_types
-    result = json.dumps(graph, indent=2)
-    
-    fh = open("junk.json", "w")
-    fh.write(result)
-    fh.close()
     
     return graph
     
 
-def upload_type(s, graph, new_location, ignore_types=None, debug=False):
+def restore(s, graph, new_location, ignore_types=None, debug=False):
     follow_types = graph.get("__follow_types", True)
     if debug: print "Following types:", follow_types
     
@@ -279,7 +275,7 @@ def upload_type(s, graph, new_location, ignore_types=None, debug=False):
         if not tid.startswith("__"):
             typegraph[tid] = idres["__requires"]
     
-    type_deps = map(lambda (name, x): (len(x), name), typegraph.items())
+    type_deps = map(lambda (name, x): (len(x), name), typegraph.iteritems())
     type_deps.sort()
     if follow_types:
         types_to_create = create_what(type_deps, typegraph)
@@ -294,7 +290,7 @@ def upload_type(s, graph, new_location, ignore_types=None, debug=False):
             for prop in idres["properties"]:
                 propgraph[prop["id"]] = prop["__requires"]
                 proptotype[prop["id"]] = tid
-    prop_deps = map(lambda (name, x): (len(x), name), propgraph.items())
+    prop_deps = map(lambda (name, x): (len(x), name), propgraph.items()) #*
     prop_deps.sort()
     if follow_types:
         props_to_create = create_what(prop_deps, propgraph)
@@ -355,7 +351,7 @@ def upload_type(s, graph, new_location, ignore_types=None, debug=False):
     
     if debug: print "--------------------------"
     
-    for prop in props_to_create:
+    for prop in props_to_create: #* prop_id
         info = graph[proptotype[prop]]["properties"]
         for i in info:
             if i["id"] == prop: 
@@ -367,8 +363,8 @@ def upload_type(s, graph, new_location, ignore_types=None, debug=False):
                 if i["expected_type"]:
                     expected = convert_name(i["expected_type"], base_id, domain_id, only_include)
                 for k in i["key"]:
-                    if k.namespace == proptotype[prop]:
-                        key = k.value
+                    if k["namespace"] == proptotype[prop]:
+                        key = k["value"]
                 if i["/freebase/documented_object/tip"]:
                     tip = graph[type]["/freebase/documented_object/tip"]
                 
@@ -422,7 +418,7 @@ def upload_type(s, graph, new_location, ignore_types=None, debug=False):
     
 
 
-def _get_graph(initial_types, follow_types):
+def _get_graph(s, initial_types, follow_types):
     """ get the graph of dependencies of all the types involved, starting with a list supplied """
     
     assert isinstance(initial_types, (list, tuple))

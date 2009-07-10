@@ -5,6 +5,8 @@ import os.path
 
 import freebase
 
+import getlogindetails
+
 def main():
     created = False
     passwordfile = "test/.password.txt"
@@ -12,17 +14,8 @@ def main():
     # setup password stuff
     if not os.path.isfile(passwordfile):
         created = True
-        USERNAME, PASSWORD = "", ""
-        print "RUNTESTSIn order to run the tests, we need to use a valid freebase username and password"
-        USERNAME = raw_input("Please enter your username: ")
-        PASSWORD = raw_input("Please enter your password (it'll appear in cleartext): ")
-        
-        freebase.login(USERNAME, PASSWORD)
-        
-        print "Thanks!"
-        fh = open(passwordfile, "w")
-        fh.write(USERNAME + "\n" + PASSWORD)
-        fh.close()
+        USERNAME, PASSWORD = getlogindetails.main(create_password_file=True)
+    USERNAME, PASSWORD = getlogindetails.main()        
     
     # run tests
     import test_freebase
@@ -34,7 +27,7 @@ def main():
     # This is very strange. If you try to do [s1, s2], thereby running freebase tests first, 
     # two tests in the testschemamanipulation file fail! They fail because of caching issues; if
     # I check on freebase, the changes are actually there. I have racked my mind for explanations.
-    anotherrun = unittest.TestSuite([s2, s1])
+    anotherrun = unittest.TestSuite([s1, s2])
     
     #run = unittest.TestSuite(suites)
     

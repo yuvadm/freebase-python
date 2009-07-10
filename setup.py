@@ -65,9 +65,9 @@ setup(
     entry_points = {
         'console_scripts': [
             'fcl = freebase.fcl.fcl:main',
-            'fb_save_base = freebase.schema.cmd:fb_save_base',
-            'fb_save_type = freebase.schena.cmd:fb_save_type',
-            'fb_restore = freebase.schema.cmd:fb_restore'
+            'fb_save_base = freebase.schema_cmd:fb_save_base',
+            'fb_save_type = freebase.schema_cmd:fb_save_type',
+            'fb_restore = freebase.schema_cmd:fb_restore'
         ]
     },
     test_suite = "test.runtests.main",
