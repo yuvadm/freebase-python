@@ -2,6 +2,44 @@
 from freebase.api.session import HTTPMetawebSession
 from freebase.api.session import get_key_namespace, LITERAL_TYPE_IDS
 
+"""
+NOTE
+----
+graph is used freely in this file. Some information:
+ - It refers to an internal representation of a group of types.
+ - It resembles a mqlread result, but it is not a mqlread result
+ - It also has some helper variables like __requires and __related. 
+ - It is produced by _get_graph
+ - It can be converted into valid json (json.dumps(graph, indent=2))
+ 
+Its structure is as follows:
+
+    "type_id" : {
+      "name" : "My Type",
+      "id" : "/base_id/type_id"
+      ...
+      "__requires" : ["/base_id/type_id2"]
+      "__properties" : [
+        {
+          "id" : "/base_id/type_id/my_prop"
+          ...
+        },
+        {
+          ...
+        }
+      ]
+    },
+    "type_id2" : {...}
+    ...
+    
+"""
+
+class DelegationError(Exception):
+    """You can't set the expected_type if the expected_type of the delegated (master) is a primitive"""
+
+class CVTError(Exception):
+    """You can't set follow_types to False if there's a cvt. A cvt requires you get all the relevant types. Set follow_types to true."""
+
 def key_exists(s, k):
     q = {
         "id" : k,
@@ -74,7 +112,7 @@ def get_property_info(s, prop_id):
             elif res[i].has_key("value"):
                 info[i] = res[i]["value"]
             else:
-                raise Exception("There is a problem with getting the property value.")
+                raise ValueError("There is a problem with getting the property value.")
         else: info[i] = None
 
     # delete the properties that are going to be asked for in create_property
@@ -89,7 +127,7 @@ def get_property_info(s, prop_id):
     # delete other useless things...
     del res["id"]
 
-    for i in [k for k, v in res.items() if v is None]:
+    for i in [k for k, v in res.iteritems() if v is None]:
         del res[i]
 
     info["__raw"] = res
@@ -97,9 +135,17 @@ def get_property_info(s, prop_id):
 
 
 # Create Type
-def create_type(s, name, key, ns, cvt=None, tip=None, included=None, extra=None):
+def create_type(s, name, key, ns, cvt=False, tip=None, included=None, extra=None):
     if key_exists(s, ns + "/" + key ):
         return
+    
+    # assert isinstance(name, basestring) # name could be mqlish
+    assert isinstance(key, basestring)
+    assert isinstance(ns, basestring)
+    
+    assert tip is None or isinstance(tip, basestring)    
+    assert included is None or isinstance(included, (basestring, list, tuple))
+    assert extra is None or isinstance(extra, dict)
 
     q = {
         "create" : "unconditional",
@@ -143,12 +189,17 @@ def create_type(s, name, key, ns, cvt=None, tip=None, included=None, extra=None)
 # Create Property
 def create_property(s, name, key, schema, expected, unique=False, disambig=False, tip=None, extra=None):
     if key_exists(s, schema + "/" + key):
-        # this isn't (neccesarily) a problem
-        # raise Exception("The key \"%s\" already exists!" % (schema + "/" + key))
         return
 
-    # validate parameters str
-
+    
+    # validate parameters
+    # assert isinstance(name, basestring) # could be mql
+    assert isinstance(key, basestring)
+    assert isinstance(schema, basestring)
+    assert isinstance(expected, basestring)
+    assert tip is None or isinstance(tip, basestring)    
+    assert extra is None or isinstance(extra, dict)
+    
     q = {
         "create" : "unconditional",
         "type" : "/type/property",
@@ -169,10 +220,17 @@ def create_property(s, name, key, schema, expected, unique=False, disambig=False
          q['/freebase/property_hints/disambiguator'] = { "connect" : "update", "value" : True }
     if extra:
          q.update(extra)
-    #print json.dumps(q, indent=2)
     return s.mqlwrite(q, use_permission_of=schema)
 
 def delegate_property(s, p, schema, name=None, key=None, expected=None, tip=None, extra=None):
+    
+    assert isinstance(p, basestring)
+    assert isinstance(schema, basestring)
+    #assert name is None or isinstance(name, basestring)
+    assert key is None or isinstance(key, basestring)
+    assert expected is None or isinstance(expected, basestring)
+    assert tip is None or isinstance(tip, basestring)
+    
     q = {
         "id" : p,
         "type" : "/type/property",
@@ -190,7 +248,7 @@ def delegate_property(s, p, schema, name=None, key=None, expected=None, tip=None
     if r["expected_type"]["id"] in LITERAL_TYPE_IDS:
         if expected:
             if expected != r["expected_type"]["id"]:
-                raise Exception("You can't set the expected_type if the expected_type of the delegated (master) is a primitive")
+                raise DelegationError("You can't set the expected_type if the expected_type of the delegated (master) is a primitive")
         expected = r["expected_type"]["id"]
     # If the expected_type of the delegator(master) is not a primitive, the delegated's
     # expected_type can be different
@@ -233,6 +291,13 @@ def reciprocate_property(s, name, key, master, unique=False, disambig=False, tip
     So, given a master, the reciprocal's schema is the master's expected type and the reciprocal's
     expected type is the master's schema. """
 
+    # assert isinstance(name, basestring) # name could be mqlish
+    assert isinstance(key, basestring)
+    assert isinstance(master, basestring)
+    
+    assert tip is None or isinstance(tip, basestring)
+    assert extra is None or isinstance(extra, dict)
+    
 
     q = {
         "id" : master,
@@ -249,174 +314,126 @@ def reciprocate_property(s, name, key, master, unique=False, disambig=False, tip
     return create_property(s, name, key, ect, schema, unique, disambig, tip,
         extra = master)
 
-# upload / restore types
+# dump / restore types
 def dump_base(s, base_id):
-    types = map(lambda x: x["id"], s.mqlread({"id" : base_id, "/type/domain/types":[{"id" : None}]})["/type/domain/types"])
+    types = [type_object["id"] for type_object in s.mqlread({"id" : base_id, "/type/domain/types":[{"id" : None}]})["/type/domain/types"]]
     graph = _get_graph(s, types, True)
-    graph["__follow_types"] = True
-    
+        
     return graph
 
 def dump_type(s, type_id, follow_types=True):
     types = [type_id]
     graph = _get_graph(s, types, follow_types)
-    graph["__follow_types"] = follow_types
     
     return graph
     
 
-def restore(s, graph, new_location, ignore_types=None, debug=False):
+def restore(s, graph, new_location, ignore_types=None):
     follow_types = graph.get("__follow_types", True)
-    if debug: print "Following types:", follow_types
     
     # create type dependencies
-    typegraph = {}
-    for tid, idres in graph.items():
-        if not tid.startswith("__"):
-            typegraph[tid] = idres["__requires"]
+    type_requires_graph = {}
     
-    type_deps = map(lambda (name, x): (len(x), name), typegraph.iteritems())
-    type_deps.sort()
-    if follow_types:
-        types_to_create = create_what(type_deps, typegraph)
-    else:
-        types_to_create = typegraph.keys()
+    # create prop dependencies
+    prop_requires_graph = {}
+    prop_to_type_map = {}
+        
+    for type_id, type_information in graph.iteritems():
+        if not type_id.startswith("__"): # not a real type, but rather a helper
+            # type dependency generation
+            type_requires_graph[type_id] = type_information["__requires"]
+            
+            # prop dependency generation
+            for prop in type_information["properties"]:
+                prop_requires_graph[prop["id"]] = prop["__requires"]
+                prop_to_type_map[prop["id"]] = type_id
+            
     
-    # create property dependencies
-    propgraph = {}
-    proptotype = {}
-    for tid, idres in graph.items():
-        if not tid.startswith("__"):
-            for prop in idres["properties"]:
-                propgraph[prop["id"]] = prop["__requires"]
-                proptotype[prop["id"]] = tid
-    prop_deps = map(lambda (name, x): (len(x), name), propgraph.items()) #*
-    prop_deps.sort()
-    if follow_types:
-        props_to_create = create_what(prop_deps, propgraph)
-    else:
-        props_to_create = propgraph.keys()
     
-    if debug: print "types", types_to_create
-    if debug: print "-----------------------"
-    if debug: print "props", props_to_create
-    
-    base_id, domain_id = s.mqlreadmulti([{"id" : types_to_create[0], "type" : "/type/type", "domain" : {"id" : None}},
-                                         {"id" : new_location, "a:id" : None}])                         
-    base_id = base_id["domain"]["id"]
-    domain_id = domain_id["a:id"]
+    types_to_create = _generate_dependency_creation_order(type_requires_graph)
+    props_to_create = _generate_dependency_creation_order(prop_requires_graph)
+        
+    origin_id, new_location_id = s.mqlreadmulti([{"id" : types_to_create[0], "type" : "/type/type", "domain" : {"id" : None}},
+                                               {"id" : new_location, "a:id" : None}])                         
+    origin_id = origin_id["domain"]["id"]
+    new_location_id = new_location_id["a:id"]
     
     only_include = types_to_create + props_to_create
     
-    for type in types_to_create:
-        if debug: print type
-        key = ""
-        if len(graph[type]["key"]) == 1:
-            key = graph[type]["key"][0]["value"]
-        else:
-            expectedname = graph[type]["id"].split("/")[-1]
-            if base_id:
-                for group in graph[type]["key"]:
-                    if group["namespace"] == base_id:
-                        key = group["value"]
-                        continue
-            if key is None:
-                key = expectedname
+    for type_id in types_to_create:
+        # let's find the type's key
+        key = None
+        for group in graph[type_id]["key"]:
+            if group["namespace"] == origin_id:
+                key = group["value"]
+                break
+        
+        if key is None: # this shouldn't happen
+            key = graph[type_id]["id"].split("/")[-1] # this can be wrong... different key than typeid
+            
+        
         tip = None
-        if graph[type]["/freebase/documented_object/tip"]:
-            tip = graph[type]["/freebase/documented_object/tip"]["value"]
+        if graph[type_id]["/freebase/documented_object/tip"]:
+            tip = graph[type_id]["/freebase/documented_object/tip"]["value"]
         
         ignore = ("name", "domain", "key", "type", "id", "properties", "/freebase/type_hints/enumeration",
                     "/freebase/type_hints/included_types", "/freebase/type_hints/mediator", "/freebase/documented_object/tip")
-        extra = {}
-        for k, v in graph[type].items():
-            if k not in ignore and not k.startswith("__"):
-                if v:
-                    if isinstance(v, basestring):
-                        extra.update({k:v})
-                    elif isinstance(v, bool):
-                        extra.update({k:v})
-                    elif v.has_key("id"):
-                        extra.update({k:v["id"]})
-                    elif v.has_key("value"):
-                        extra.update({k:v["value"]})
-                    else:
-                        raise Exception("There is a problem with getting the property value.")
+        extra = _generate_extra_properties(graph[type_id], ignore)
         
-        create_type(s, graph[type]["name"]["value"], key, domain_id,
-            included=map(lambda x: convert_name(x["id"], base_id, domain_id, only_include), graph[type]["/freebase/type_hints/included_types"]),
-            cvt=graph[type]["/freebase/type_hints/mediator"],
-            tip=tip, extra=extra)
-
+        name = graph[type_id]["name"]["value"]
+        included = [_convert_name_to_new(included_type["id"], origin_id, new_location_id, only_include) for included_type in graph[type_id]["/freebase/type_hints/included_types"]]
+        cvt = graph[type_id]["/freebase/type_hints/mediator"]
+        
+        create_type(s, name, key, new_location_id, included=included, cvt=cvt, tip=tip, extra=extra)
     
-    if debug: print "--------------------------"
-    
-    for prop in props_to_create: #* prop_id
-        info = graph[proptotype[prop]]["properties"]
-        for i in info:
-            if i["id"] == prop: 
+    for prop_id in props_to_create: #* prop_id
+        type_id = prop_to_type_map[prop_id]
+        all_properties_for_type = graph[type_id]["properties"]
+        for prop in all_properties_for_type:
+            if prop["id"] == prop_id: # good, we are dealing with our specific property 
                 
-                schema = convert_name(proptotype[prop], base_id, domain_id, only_include)
-                if debug: print prop
+                new_schema = _convert_name_to_new(type_id, origin_id, new_location_id, only_include)
+                
+                name =  prop["name"]
+                
                 expected = None
+                if prop["expected_type"]:
+                    expected = _convert_name_to_new(prop["expected_type"], origin_id, new_location_id, only_include)
                 
-                if i["expected_type"]:
-                    expected = convert_name(i["expected_type"], base_id, domain_id, only_include)
-                for k in i["key"]:
-                    if k["namespace"] == proptotype[prop]:
-                        key = k["value"]
-                if i["/freebase/documented_object/tip"]:
-                    tip = graph[type]["/freebase/documented_object/tip"]
+                for group in prop["key"]:
+                    if group["namespace"] == type_id:
+                        key = group["value"]
+                        break
                 
-                disambig = i["/freebase/property_hints/disambiguator"]
+                tip = None
+                if prop["/freebase/documented_object/tip"]:
+                    tip = prop["/freebase/documented_object/tip"]["value"]
+                
+                disambig = prop["/freebase/property_hints/disambiguator"]
+                unique = prop["unique"]
                 
                 ignore = ("name", "expected_type", "key", "id", "master_property", "delegated", "unique", "type", "schema",
                             "/freebase/property_hints/disambiguator", "enumeration", "/freebase/property_hints/enumeration", 
                             "/freebase/documented_object/tip")
-                extra = {}
-                for k, v in i.items():
-                    if k not in ignore and not k.startswith("__"):
-                        if v:
-                            if isinstance(v, basestring):
-                                extra.update({k:v})
-                            elif isinstance(v, bool):
-                                extra.update({k:v})
-                            elif v.has_key("id"):
-                                extra.update({k:v["id"]})
-                            elif v.has_key("value"):
-                                extra.update({k:v["value"]})
-                            else:
-                                raise Exception("There is a problem with getting the property value.")
-                            
-                            # since we are creating a property, all these connect insert delicacies are unneccesary    
-                            """if isinstance(v, basestring) and v.startswith("/"): # an id
-                                extra.update({k : {"connect" : "insert", "id" : v}})
-                            elif isinstance(v, bool): # a bool value
-                                extra.update({k : {"connect" : "insert", "value" : v}})
-                            else: # an english value
-                                extra.update({k : {"connect" : "insert", "value" : v, "lang" : "/lang/en"}})"""
                 
+                extra = _generate_extra_properties(prop, ignore)   
                 
-                if i['master_property']:
-                    converted_master_property = convert_name(i["master_property"], base_id, domain_id, only_include)
-                    if converted_master_property == i["master_property"]:
-                        raise Exception("You can't set follow_types to False if there's a cvt. A cvt requires you get all the relevant types. Set follow_types to true.\n" + \
+                if prop['master_property']:
+                    converted_master_property = _convert_name_to_new(prop["master_property"], origin_id, new_location_id, only_include)
+                    if converted_master_property == prop["master_property"]:
+                        raise CVTError("You can't set follow_types to False if there's a cvt. A cvt requires you get all the relevant types. Set follow_types to true.\n" + \
                                         "The offending property was %s, whose master was %s." % (prop["id"], prop["master_property"]))
-                    reciprocate_property(s, i["name"], key, converted_master_property,
-                        i["unique"], disambig=disambig, tip=tip, extra=extra)
+                    reciprocate_property(s, name, key, converted_master_property,
+                        unique, disambig=disambig, tip=tip, extra=extra)
                 
-                elif i['delegated']:
-                    delegate_property(s, convert_name(i['delegated'], base_id, domain_id, only_include), schema,
+                elif prop['delegated']:
+                    delegate_property(s, _convert_name_to_new(prop['delegated'], origin_id, new_location_id, only_include), new_schema,
                         expected=expected, tip=tip, extra=extra)
                 
                 else:
-                    create_property(s, i["name"], key, schema, expected, i["unique"], 
+                    create_property(s, name, key, new_schema, expected, unique, 
                         disambig=disambig, tip=tip, extra=extra) 
                         
-                
-        
-    
-
 
 def _get_graph(s, initial_types, follow_types):
     """ get the graph of dependencies of all the types involved, starting with a list supplied """
@@ -434,40 +451,73 @@ def _get_graph(s, initial_types, follow_types):
             done.update(graph[new]["__related"])
         if not follow_types:
             # we have to check that there are no cvts attached to us, or else
-            # ugly things happen (we can't include the cvt)
+            # ugly things happen (we can't include the cvt because the cvt won't link to us.)
             for prop in graph[new]["properties"]:
                 if prop["master_property"]:
-                    raise Exception("You can't set follow_types to False if there's a cvt. A cvt requires you get all the relevant types. Set follow_types to true.\n" + \
+                    raise CVTError("You can't set follow_types to False if there's a cvt. A cvt requires you get all the relevant types. Set follow_types to true.\n" + \
                                     "The offending property was %s, whose master was %s." % (prop["id"], prop["master_property"]))
+    
+    graph["__follow_types"] = follow_types
     return graph
 
 
-def convert_name(old_name, operating_base, new_base, only_include=None):
+def _convert_name_to_new(old_name, operating_base, new_base, only_include=None):
     if old_name in only_include and old_name.startswith(operating_base):
         return new_base + old_name.replace(operating_base, "", 1)
     else:
         return old_name
 
-def create_what(deps, graph):
-    create_list = []
-    while len(deps) > 0:
-        neediness, id = deps.pop(0)
-        if neediness == 0:
-            create_list.append(id)
+def _generate_dependency_creation_order(requires_graph):
+    # This is a naive topographical sort to determine
+    # in what order to create types or properties so
+    # that the other type/properties they rely on
+    # are already created
+    
+    # This function is called with the type dependencies
+    # and then the property dependencies.
+    
+    
+    # we sort the dependency_list because its a good idea
+    # to create the guys with zero dependencies before the
+    # guys with one.. it's just a simple optimization to 
+    # the topographical sort
+    dependency_list = [(len(requires), name) for (name, requires) in requires_graph.iteritems()]
+    dependency_list.sort()
+    
+    creation_order_list = []
+    while len(dependency_list) > 0:
+        number_of_requirements, id = dependency_list.pop(0)
+        if number_of_requirements == 0:
+            creation_order_list.append(id)
             continue
         else:
-            work = True
-            for req in graph[id]:
-                if req not in create_list:
-                    work = False
+            are_the_types_dependencies_already_resolved = True
+            for requirement in requires_graph[id]:
+                if requirement not in creation_order_list:
+                    are_the_types_dependencies_already_resolved = False
                     continue
-            if work:
-                create_list.append(id)
+            if are_the_types_dependencies_already_resolved:
+                creation_order_list.append(id)
             else:
-                deps.append((neediness, id))
-    return create_list        
+                dependency_list.append((number_of_requirements, id))
+    return creation_order_list
 
-
+def _generate_extra_properties(dictionary_of_values, ignore):
+    extra = {}
+    for k, v in dictionary_of_values.iteritems():
+        if k not in ignore and not k.startswith("__"):
+            if v:
+                if isinstance(v, basestring):
+                    extra.update({k:v})
+                elif isinstance(v, bool):
+                    extra.update({k:v})
+                elif v.has_key("id"):
+                    extra.update({k:v["id"]})
+                elif v.has_key("value"):
+                    extra.update({k:v["value"]})
+                else:
+                    raise ValueError("There is a problem with getting the property value.")
+    return extra
 
 def _get_needed(s, type_id):
     q = TYPE_QUERY
@@ -491,8 +541,8 @@ def _get_needed(s, type_id):
     # related can be used to generate subgraphs of types
     # required is used to generate the dependency graph of types
 
-    related = return_relevant(related_types, parents)
-    requires = return_relevant(included_types, parents)
+    related = _return_relevant(related_types, parents)
+    requires = _return_relevant(included_types, parents)
 
     # get property information
     properties = r["properties"]
@@ -503,7 +553,7 @@ def _get_needed(s, type_id):
         if prop["delegated"]:
             dependent_on.add(prop["delegated"])
 
-        prop["__requires"] = return_relevant(dependent_on, parents)
+        prop["__requires"] = _return_relevant(dependent_on, parents)
 
     # return all the information along with our special __* properties
     info = r
@@ -512,7 +562,7 @@ def _get_needed(s, type_id):
     return info
 
 
-def return_relevant(start_list, parents):
+def _return_relevant(start_list, parents):
     final = []
     for item in start_list:
         indomain = False

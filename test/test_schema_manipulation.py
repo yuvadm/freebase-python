@@ -31,30 +31,20 @@ f = lambda x: x["id"]
 class TestSchemaManipulation(unittest.TestCase):
     
     def test_make_and_type_object(self):
-        print domain_id
         a = s.create_object("A", path=domain_id + "/a")
         self.assertEqual(a.create, "created")
         
         b = s.create_object("B", path=domain_id + "/b", included_types=["/people/person"])
-        print s.cookiejar._cookies["sandbox-freebase.com"]
         
         q = { "id" : b.id, "type" : [{"id" : None}] }
         types = map(f, s.mqlread(q)["type"])
         self.assertEqual("/common/topic" in types, True)
         self.assertEqual("/people/person" in types, True)
         self.assertEqual("/film/actor" in types, False)
-        s.touch(), time.sleep(2), s.touch();
-        print s.cookiejar._cookies["sandbox-freebase.com"]
+        
         type_object(s, b.id, "/film/film_genre")
-        print s.cookiejar._cookies["sandbox-freebase.com"]
         
-        s.touch(), time.sleep(2), s.touch(); 
-        #s.mqlwrite({"id" : b.id, "/film/film_genre/films_in_this_genre" : {"id" : "/en/the_taking_of_pelham_1_2_3", "connect" : "insert"}})
         types = map(f, s.mqlread(q)["type"])
-        print s.cookiejar._cookies["sandbox-freebase.com"]
-        
-        s.touch(), time.sleep(2), s.touch(); 
-        print types
         
         self.assertEqual("/film/film_genre" in types, True)
         self.assertEqual("/media_common/media_genre" in types, True)
