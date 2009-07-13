@@ -326,7 +326,6 @@ def dump_type(s, type_id, follow_types=True):
     graph = _get_graph(s, types, follow_types)
     
     return graph
-    
 
 def restore(s, graph, new_location, ignore_types=None):
     follow_types = graph.get("__follow_types", True)

@@ -123,6 +123,26 @@ class TestFreebase(unittest.TestCase):
         self.assertEqual( 'Sting', result['name'])
         self.assertEqual('#9202a8c04000641f8000000000092a01', result['guid'][0]['value'])
    
+    
+    def test_mqlreaditer(self):
+        filmq = [{'id': None,
+                    'initial_release_date>=': '2009',
+                    'name': None,
+                    'type': '/film/film'
+                    }]
+        r0 = freebase.mqlreaditer(filmq)
+        r1 = freebase.mqlreaditer(filmq[0]) # The difference between [{}] and []. mqlreaditer should be able to handle both
+        self.assertNotEqual(r0, None)
+        self.assertEqual([a for a in r0], [b for b in r1])
+        
+        # and let's test it for mqlread, just in case
+        # actually, for mqlread, it must be [{}], because there are lots of elements
+        m0 = freebase.mqlread(filmq)
+        m1 = lambda : freebase.mqlread(filmq[0])
+        self.assertRaises(MetawebError, m1)
+        self.assertNotEqual(m0, None)
+         
+   
     def test_ridiculously_long_write(self):
         
         q = [{

@@ -42,7 +42,7 @@ def fb_save_base():
     
     s = HTTPMetawebSession(service_host)
     
-    print json.dumps(dump_base(s, args[0]), indent=2)
+    print >> sys.stdout, json.dumps(dump_base(s, args[0]), indent=2)
     
 def fb_save_type():
     op = OptionParser(usage='%prog [options] typeid ')
@@ -80,7 +80,7 @@ def fb_save_type():
         op.error('Too many arguments')
     
     s = HTTPMetawebSession(service_host)
-    print json.dumps(dump_type(s, args[0], options.follow), indent=2)
+    print >> sys.stdout, json.dumps(dump_type(s, args[0], options.follow), indent=2)
     
 
 def fb_restore():
@@ -142,8 +142,8 @@ def fb_restore():
         fg.close()
     if graphfile == "-": # use stdin
         graph = json.load(sys.stdin)
-    print "loaded graph", graph
-    restore(s, graph, newlocation, ignore_types=None, debug=False)
+        
+    restore(s, graph, newlocation, ignore_types=None)
 
 def login(api_host, username=None, password=None):
     

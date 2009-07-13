@@ -496,6 +496,11 @@ class HTTPMetawebSession(MetawebSession):
         cursor = True
         service = '/api/service/mqlread'
         
+        if isinstance(sq, (tuple, list)):
+            if len(sq) > 1:
+                raise MetawebError("You cannot ask mqlreaditer a query in the form: [{}, {}, ...], just [{}] or {}")
+            sq = sq[0]
+        
         while 1:
             subq = dict(query=[sq], cursor=cursor, escape=False)
             if asof:
