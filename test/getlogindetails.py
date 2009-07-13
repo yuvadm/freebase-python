@@ -40,5 +40,5 @@ def main(create_password_file=False):
 
 def writepassword(passwordfile, username, password):
     fh = open(passwordfile, "w")
-    fh.write(USERNAME + "\n" + PASSWORD)
+    fh.write(username + "\n" + password)
     fh.close()
