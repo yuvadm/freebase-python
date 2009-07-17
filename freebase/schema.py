@@ -51,7 +51,7 @@ def key_exists(s, k):
 def type_object(s, id, type_id):
     q = {
         "id" : type_id,
-        "/freebase/type_hints/included_types" : [{"id" : None}]
+        "/freebase/type_hints/included_types" : [{"id" : None, "optional" : True}]
     }
     included_types = map(lambda x: x["id"], s.mqlread(q)["/freebase/type_hints/included_types"])
     
@@ -136,6 +136,7 @@ def get_property_info(s, prop_id):
 
 # Create Type
 def create_type(s, name, key, ns, cvt=False, tip=None, included=None, extra=None):
+    # TODO: CREATE SYNTHETIC VIEW
     if key_exists(s, ns + "/" + key ):
         return
     

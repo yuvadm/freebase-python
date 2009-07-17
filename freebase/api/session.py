@@ -39,7 +39,7 @@ declarations for external metaweb api.
 
 
 __all__ = ['MetawebError', 'MetawebSession', 'HTTPMetawebSession', 'attrdict']
-__version__ = '1.0'
+__version__ = '1.01'
 
 import os, sys, re
 import cookielib
@@ -339,12 +339,11 @@ class HTTPMetawebSession(MetawebSession):
             headerstr = '\nHEADERS:\n  ' + '\n  '.join([('%s: %s' % (k,v))
                                               for k,v in headers.items()])
         self.log.info('%s %s%s%s', method, url, formstr, headerstr)
-        #######
         
         # just in case you decide to make SUPER ridiculous GET queries:
         if len(url) > 1000 and method == "GET":
             method = "POST"
-            url, body = url.split("?") 
+            url, body = url.split("?", 1) 
             ct = 'application/x-www-form-urlencoded'
             headers['content-type'] = ct + '; charset=utf-8'
            
@@ -631,12 +630,14 @@ class HTTPMetawebSession(MetawebSession):
         
         return body
     
-    def mqlwrite(self, sq, use_permission_of=None):
+    def mqlwrite(self, sq, use_permission_of=None, attribution_id=None):
         """do a mql write. For a more complete description,
         see http://www.freebase.com/view/en/api_service_mqlwrite"""
         query = dict(query=sq, escape=False)
         if use_permission_of:
             query['use_permission_of'] = use_permission_of
+        if attribution_id:
+            query['attribution'] = attribution_id
 
         qstr = json.dumps(query, separators=SEPARATORS)
         
@@ -867,16 +868,18 @@ class HTTPMetawebSession(MetawebSession):
 
     ### SCHEMA MANIPULATION ###
     # Object helpers
-    def create_object(self, name="", path=None, key=None, namespace=None, included_types=None, create="unless_exists", extra=None):
+    def create_object(self, name="", path=None, key=None, namespace=None, included_types=None, create="unless_exists", extra=None, use_permission_of=None, attribution=None):
         if type(included_types) is str:
             included_types = [included_types]
 
         if path and (key or namespace):
-            raise Exception("You can't specify both the path and a key and namespace.")
+            raise ValueError("You can't specify both the path and a key and namespace.")
 
         if path:
             key, namespace = get_key_namespace(path)
 
+        if (key and not namespace) or (not key and namespace):
+            raise ValueError("You must either specify both a key and a namespace, or neither.")
 
         if included_types:
             its = set(included_types)
@@ -890,12 +893,15 @@ class HTTPMetawebSession(MetawebSession):
         wq = {
             "id" : None,
             "name" : name,
-            "key" : {
-                "namespace" : namespace,
-                "value" : key,
-            },
             "create" : create
         }
+
+        # conditionally add key creation
+        if key:
+            wq.update({"key" : { 
+                "namespace" : namespace,
+                "value" : key,
+            }})
 
         if included_types:
             wq.update(type = [{ "id" : it, "connect" : "insert" } for it in its])
@@ -903,10 +909,10 @@ class HTTPMetawebSession(MetawebSession):
         if extra: 
             wq.update(extra)
 
-        return self.mqlwrite(wq)
+        return self.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
 
 
-    def connect_object(self, id, newpath, extra=None):
+    def connect_object(self, id, newpath, extra=None, use_permission_of=None, attribution=None):
 
         key, namespace = get_key_namespace(newpath)
 
@@ -921,10 +927,10 @@ class HTTPMetawebSession(MetawebSession):
 
         if extra: wq.update(extra)
 
-        return self.mqlwrite(wq)
+        return self.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
 
 
-    def disconnect_object(self, id, extra=None):
+    def disconnect_object(self, id, extra=None, use_permission_of=None, attribution=None):
 
         key, namespace = get_key_namespace(id)
 
@@ -937,11 +943,11 @@ class HTTPMetawebSession(MetawebSession):
             }
         }
         if extra: wq.update(extra)
-        return self.mqlwrite(wq)
+        return self.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
 
-    def move_object(self, oldpath, newpath):
-        a = self.connect_object(oldpath, newpath)
-        b = self.disconnect_object(oldpath)
+    def move_object(self, oldpath, newpath, use_permission_of=None, attribution=None):
+        a = self.connect_object(oldpath, newpath, use_permission_of=use_permission_of, attribution=attribution)
+        b = self.disconnect_object(oldpath, use_permission_of=use_permission_of, attribution=attribution)
         return a, b
     
 
@@ -958,8 +964,8 @@ if __name__ == '__main__':
     
     mss = HTTPMetawebSession('sandbox.freebase.com')
     
-    self.mss.log.setLevel(logging.DEBUG)
-    self.mss.log.addHandler(console)
+    mss.log.setLevel(logging.DEBUG)
+    mss.log.addHandler(console)
 
     
     print mss.mqlread([dict(name=None, type='/type/type')])
