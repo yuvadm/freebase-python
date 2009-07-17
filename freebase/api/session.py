@@ -47,7 +47,7 @@ import cookielib
 SEPARATORS = (",", ":")
 
 # json libraries rundown
-# jsonlib2 is the fastest, but it's written in C, so not as
+# jsonlib2 is the fastest, but it's written in C, thus not as
 # accessible. json is included in python2.6. simplejson
 # is the same as json.
 

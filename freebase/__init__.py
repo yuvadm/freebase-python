@@ -5,7 +5,7 @@ import sandbox
 
 __all__ = ["HTTPMetawebSession", "sandbox"]
 
-_base = HTTPMetawebSession("freebase.com")
+_base = HTTPMetawebSession("http://freebase.com")
 
 # we want to add base's functions to __init__.py
 # so that we can say freebase.func() and really
@@ -36,7 +36,7 @@ for funcname in dir(_base):
             __all__.append(funcname)
 
 # we don't want any self-referencing
-# business going. Plus, this is cleaner.
+# business going on. Plus, this is cleaner.
 del self
 
 # we want dir(freebase) to be clean

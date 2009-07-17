@@ -30,7 +30,7 @@
 import sys
 from freebase.api.session import HTTPMetawebSession
 
-_base = HTTPMetawebSession("sandbox.freebase.com")
+_base = HTTPMetawebSession("http://sandbox.freebase.com")
 
 __all__ = ["HTTPMetawebSession"]
 
@@ -61,7 +61,7 @@ for funcname in dir(_base):
             __all__.append(funcname)
 
 # we don't want any self-referencing
-# business going. Plus, this is cleaner.
+# business going on. Plus, this is cleaner.
 del self
 
 # we want dir(freebase) to be clean
