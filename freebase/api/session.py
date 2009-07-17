@@ -324,21 +324,20 @@ class HTTPMetawebSession(MetawebSession):
         if 'user-agent' not in headers:
             headers['user-agent'] = 'python freebase.api-%s' % __version__
         
-        #if self.tid is not None:
-        #    headers['x-metaweb-tid'] = self.tid
-        
         ####### DEBUG MESSAGE - should check log level before generating
-        if form is None:
-            formstr = ''
-        else:
-            formstr = '\nFORM:\n  ' + '\n  '.join(['%s=%s' % (k,v)
-                                          for k,v in form.items()])
-        if headers is None:
-            headerstr = ''
-        else:
-            headerstr = '\nHEADERS:\n  ' + '\n  '.join([('%s: %s' % (k,v))
-                                              for k,v in headers.items()])
-        self.log.info('%s %s%s%s', method, url, formstr, headerstr)
+        loglevel = self.log.getEffectiveLevel()
+        if loglevel <= 20: # logging.INFO = 20
+            if form is None:
+                formstr = ''
+            else:
+                formstr = '\nFORM:\n  ' + '\n  '.join(['%s=%s' % (k,v)
+                                              for k,v in form.items()])
+            if headers is None:
+                headerstr = ''
+            else:
+                headerstr = '\nHEADERS:\n  ' + '\n  '.join([('%s: %s' % (k,v))
+                                                  for k,v in headers.items()])
+            self.log.info('%s %s%s%s', method, url, formstr, headerstr)
         
         # just in case you decide to make SUPER ridiculous GET queries:
         if len(url) > 1000 and method == "GET":
@@ -569,6 +568,8 @@ class HTTPMetawebSession(MetawebSession):
         return [self._mqlresult(rs[key]) for key in keys]
     
     def trans(self, guid):
+        """translate blob from id. Identical to `raw`. For more
+        information, see http://www.freebase.com/view/en/api_trans_raw"""
         return self.raw(guid)
     
     def raw(self, id):
@@ -598,7 +599,8 @@ class HTTPMetawebSession(MetawebSession):
         return body
     
     def unsafe(self, id):
-        """ unsafe raw """
+        """ unsafe raw... not really documented, but identical to raw,
+        except it will be exactly what you uploaded. """
         url = '/api/trans/unsafe' + urlquote(id)
         
         self.log.info(url)
@@ -856,7 +858,9 @@ class HTTPMetawebSession(MetawebSession):
     ### DEPRECATED IN API
     def reconcile(self, name, etype=['/common/topic']):
         """DEPRECATED: reconcile name to guid. For a more complete description,
-        see http://www.freebase.com/view/en/dataserver_reconciliation"""
+        see http://www.freebase.com/view/en/dataserver_reconciliation
+        
+        If interested, check out http://data.labs.freebase.com/recon/"""
         
         service = '/dataserver/reconciliation'
         r = self._httpreq_json(service, 'GET', form={'name':name, 'types':','.join(etype)})
@@ -868,7 +872,9 @@ class HTTPMetawebSession(MetawebSession):
 
     ### SCHEMA MANIPULATION ###
     # Object helpers
-    def create_object(self, name="", path=None, key=None, namespace=None, included_types=None, create="unless_exists", extra=None, use_permission_of=None, attribution=None):
+    def create_object(self, name="", path=None, key=None, namespace=None, 
+                        included_types=None, create="unless_exists",
+                        extra=None, use_permission_of=None, attribution=None):
         if type(included_types) is str:
             included_types = [included_types]
 
@@ -888,7 +894,7 @@ class HTTPMetawebSession(MetawebSession):
                 "/freebase/type_hints/included_types" : [{"id" : None}]
             }]
             for res in self.mqlread(q):
-                its.update(map(lambda x: x["id"], res["/freebase/type_hints/included_types"]))
+                its.update([x["id"] for x in res["/freebase/type_hints/included_types"]])
 
         wq = {
             "id" : None,
