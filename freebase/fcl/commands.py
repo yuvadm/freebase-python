@@ -34,6 +34,7 @@ import simplejson
 import freebase.rison as rison
 from freebase.api import attrdict
 
+from freebase.schema import connect_object, disconnect_object
 
 def cmd_help(fb, command=None):
     """get help on commands
@@ -187,17 +188,8 @@ def cmd_ln(fb, src, dst):
     """
     src = fb.absid(src)
     dst = fb.absid(dst)
-    dir,file = dirsplit(dst)
-    wq = { 'id': src,
-           'key':{
-               'connect': 'insert',
-               'namespace': dir,
-               'value': file
-               }
-         }
-
-    r = fb.mss.mqlwrite(wq)
-
+    
+    return connect_object(fb.mss, src, dst)
 
 def cmd_rm(fb, path):
     """unlink a namespace key
@@ -213,17 +205,8 @@ def cmd_rm(fb, path):
     disturb anything other than the one directory entry.
     """
     path = fb.absid(path)
-    dir,file = dirsplit(path)
-
-    wq = { 'id': path,
-           'key':{
-               'connect': 'delete',
-               'namespace': dir,
-               'value': file
-            }
-         }
-
-    r = fb.mss.mqlwrite(wq)
+    
+    return disconnect_object(fb.mss, path)
 
 def cmd_mv(fb, src, dst):
     """rename srcid to dstid.

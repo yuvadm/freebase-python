@@ -8,7 +8,9 @@ import getlogindetails
 
 from freebase.api import HTTPMetawebSession, MetawebError
 from freebase.schema import create_type, reciprocate_property, delegate_property
-from freebase.schema import create_property, type_object, copy_property, move_property
+from freebase.schema import create_property, add_type_to_object, copy_property, move_property
+from freebase.schema import create_object, connect_object, disconnect_object
+from freebase.schema import move_object
 
 USERNAME = 'username'
 PASSWORD = 'password'
@@ -31,28 +33,27 @@ f = lambda x: x["id"]
 class TestSchemaManipulation(unittest.TestCase):
     
     def test_make_and_type_object(self):
-        a = s.create_object("A", path=domain_id + "/a")
+        a = create_object(s, "A", path=domain_id + "/a")
         self.assertEqual(a.create, "created")
         
-        b = s.create_object("B", path=domain_id + "/b", included_types=["/people/person"])
+        b = create_object(s, "B", path=domain_id + "/b", included_types=["/people/person"])
         
         q = { "id" : b.id, "type" : [{"id" : None}] }
-        types = map(f, s.mqlread(q)["type"])
+        types = [x["id"] for x in s.mqlread(q)["type"]]
         self.assertEqual("/common/topic" in types, True)
         self.assertEqual("/people/person" in types, True)
         self.assertEqual("/film/actor" in types, False)
         
-        type_object(s, b.id, "/film/film_genre")
+        add_type_to_object(s, b.id, "/film/film_genre")
         
-        types = map(f, s.mqlread(q)["type"])
+        types = [x["id"] for x in s.mqlread(q)["type"]]
         
         self.assertEqual("/film/film_genre" in types, True)
         self.assertEqual("/media_common/media_genre" in types, True)
 
     def test_move_object(self):
-        print domain_id
-        old = s.create_object("old", domain_id + "/old")
-        s.move_object(domain_id + "/old", domain_id + "/new")
+        old = create_object(s, "old", domain_id + "/old")
+        move_object(s, domain_id + "/old", domain_id + "/new")
         is_old = { "id" : domain_id + "/old", "key" : [{"value" : None}]}
         is_new = { "id" : domain_id + "/new", "key" : [{"value" : None}]}
         s.touch()
@@ -129,6 +130,27 @@ class TestSchemaManipulation(unittest.TestCase):
 
         #delegator property test
         delegate_property(s, "/people/person/date_of_birth", player, "Date of Birth", "db")
+
+    def test_create_over_created(self):
+        """ No creating a property on top of an already created one..."""
+        create_type(s, "Rapper", "rapper", domain_id)
+        create_property(s, "Styles", "styles", domain_id+"/rapper", "/music/genre")
+        
+        # now we mistakenly create the same prop
+        # it should just exit as if it finished successfully... but, it shouldn't actually do anything
+        create_property(s, "Styles", "styles", domain_id+"/rapper", "/music/genre")
+        # we also mistakenly create the same type, again
+        create_type(s, "Rapper", "rapper", domain_id)
+    
+    def test_reciprocating_reciprocated(self):
+        """ You can't reciprocate an already reciprocated property"""
+        create_type(s, "Master", "master", domain_id)
+        create_type(s, "Servant", "servant", domain_id)
+        
+        create_property(s, "Servants", "servants", domain_id + "/master", domain_id + "/servant", unique=False)
+        reciprocate_property(s, "Masters", "masters", domain_id + "/master/servants", unique=False)
+        
+        self.assertRaises(MetawebError, lambda: reciprocate_property(s, "Buddies", "buddies", domain_id + "/master/servants", unique=False))
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,6 +1,7 @@
+from copy import deepcopy
 
-from freebase.api.session import HTTPMetawebSession
-from freebase.api.session import get_key_namespace, LITERAL_TYPE_IDS
+from freebase.api.session import HTTPMetawebSession, MetawebError
+from freebase.api.session import LITERAL_TYPE_IDS
 
 """
 NOTE
@@ -8,7 +9,8 @@ NOTE
 graph is used freely in this file. Some information:
  - It refers to an internal representation of a group of types.
  - It resembles a mqlread result, but it is not a mqlread result
- - It also has some helper variables like __requires and __related. 
+ - It also has some helper variables like __requires and __related.
+ - All helper variables start with __ since that's not valid MQL
  - It is produced by _get_graph
  - It can be converted into valid json (json.dumps(graph, indent=2))
  
@@ -19,7 +21,7 @@ Its structure is as follows:
       "id" : "/base_id/type_id"
       ...
       "__requires" : ["/base_id/type_id2"]
-      "__properties" : [
+      "properties" : [
         {
           "id" : "/base_id/type_id/my_prop"
           ...
@@ -47,8 +49,119 @@ def key_exists(s, k):
     }
     return not None == s.mqlread(q)
 
+### SCHEMA MANIPULATION ###
+# Object helpers
+def create_object(s, name="", path=None, key=None, namespace=None, 
+                    included_types=None, create="unless_exists",
+                    extra=None, use_permission_of=None, attribution=None):
+    """
+    Create object with name, a path or a key and namespace, included_types.
+    You can also specify how it is created (unless_exists, unconditional..)
+    as well as use_permission_of and attribution
+    """
+    if type(included_types) is str:
+        included_types = [included_types]
 
-def type_object(s, id, type_id):
+    if path and (key or namespace):
+        raise ValueError("You can't specify both the path and a key and namespace.")
+
+    if path:
+        key, namespace = get_key_namespace(path)
+
+    if (key and not namespace) or (not key and namespace):
+        raise ValueError("You must either specify both a key and a namespace, or neither.")
+
+    if included_types:
+        its = set(included_types)
+        q = [{
+            "id|=" : included_types,
+            "/freebase/type_hints/included_types" : [{"id" : None}]
+        }]
+        for res in s.mqlread(q):
+            its.update([x["id"] for x in res["/freebase/type_hints/included_types"]])
+
+    wq = {
+        "id" : None,
+        "name" : name,
+        "create" : create
+    }
+
+    # conditionally add key creation
+    if key:
+        wq.update({"key" : { 
+            "namespace" : namespace,
+            "value" : key,
+        }})
+
+    if included_types:
+        wq.update(type = [{ "id" : it, "connect" : "insert" } for it in its])
+
+    if extra: 
+        wq.update(extra)
+
+    return s.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
+
+
+def connect_object(s, id, newpath, extra=None, use_permission_of=None, attribution=None):
+    """ connect object at id to a newpath.
+    Example:
+    connect_object(s, "/guid/002", "/en/the_beatles")
+    """
+    key, namespace = get_key_namespace(newpath)
+
+    wq = {
+        "id" : id,
+        "key" : {
+            "namespace" : namespace,
+            "value" : key,
+            "connect" : "insert"
+        }
+    }
+
+    if extra: wq.update(extra)
+
+    return s.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
+
+
+def disconnect_object(s, id, extra=None, use_permission_of=None, attribution=None):
+    """ disconnect objects, as in removing their keys
+    Example:
+    disconnect_object(s, "/en/the_beatles")
+    would remove the `the_beatles` key from /en """
+    key, namespace = get_key_namespace(id)
+
+    wq = {
+        "id" : id,
+        "key" : {
+            "namespace" : namespace,
+            "value" : key,
+            "connect" : "delete"
+        }
+    }
+    if extra: wq.update(extra)
+    return s.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
+
+def move_object(s, oldpath, newpath, use_permission_of=None, attribution=None):
+    """ move object from one key to another."""
+    a = connect_object(s, oldpath, newpath, use_permission_of=use_permission_of, attribution=attribution)
+    b = disconnect_object(s, oldpath, use_permission_of=use_permission_of, attribution=attribution)
+    return a, b
+
+
+def get_key_namespace(path):
+    """ get (key, namespace) from a path
+    get_key_namespace("/common") -> ("common", "/")
+    get_key_namespace("/food/drinks") -> ("drinks", "/food")
+    """
+    # be careful with /common
+    namespace, key = path.rsplit("/", 1)
+    return (key, namespace or "/")
+
+
+def add_type_to_object(s, id, type_id):
+    """
+     given an object (id) give it the type, type_id and all of its included types.
+    """
     q = {
         "id" : type_id,
         "/freebase/type_hints/included_types" : [{"id" : None, "optional" : True}]
@@ -66,21 +179,39 @@ def type_object(s, id, type_id):
 
 
 def copy_property(s, id, newid, **extra):
+    """ create a new property with the same information as the starting property """
     newname, newschema = get_key_namespace(newid)
     
     info = get_property_info(s, id)
     info["__raw"].update(extra)
-    create_property(s, info["name"], newname, newschema, info["expected_type"], info["unique"], info["/freebase/property_hints/disambiguator"],
-        info["/freebase/documented_object/tip"], info["__raw"])
+    
+    unique = None
+    if info.has_key(unique):
+        unique = info["unique"]
+    disambig = None
+    if info.has_key("/freebase/property_hints/disambiguator"):
+        disambig = info["/freebase/property_hints/disambiguator"]
+    create_property(s, info["name"], newname, newschema, info["expected_type"], unique=unique, disambig=disambig,
+        tip=info["/freebase/documented_object/tip"], extra=info["__raw"])
 
 def move_property(s, id, newid, **extra):
+    """ create an identical property and delete the old one """
     copy_property(s, id, newid, **extra)
-    disconnect_schema = {"type" : "/type/property", "schema" : {"connect" : "delete", "id" : "/".join(id.split("/")[:-1]) }}    
-    s.disconnect_object(id, extra = disconnect_schema)
+    disconnect_schema = {"type" : "/type/property", "schema" : {"connect" : "delete", "id" : "/".join(id.split("/")[:-1]) }}  
+    disconnect_object(s, id, extra = disconnect_schema)
 
 def get_property_info(s, prop_id):
-    q = PROPERTY_QUERY
+    """
+    get_property_info returns a valid json dictionary object that has all the information
+    required to describe a property. This is only used by copy_property, but could be used
+    by whoever.
+    
+    Ideally, all the required information by create_property is in the root of the dictionary
+    while all the extra information is in result["__raw"]
+    """
+    q = deepcopy(PROPERTY_QUERY)
     q.update(id=prop_id)
+    q.update(schema={"id" : None, "name" : None})
     res = s.mqlread(q)
     info = {}
     
@@ -88,33 +219,23 @@ def get_property_info(s, prop_id):
     if res["schema"]:
         info["schema"] = res["schema"]["id"]
     else: info["schema"] = None
-
+    
     if res["key"]:
-        info["keys"] = map(lambda x: (x["value"], x["namespace"]), res["key"])
+        info["key"] = [(x["value"], x["namespace"]) for x in res["key"]]
     else: info["key"] = None
 
     if res["/freebase/documented_object/tip"]:
         info["/freebase/documented_object/tip"] = res["/freebase/documented_object/tip"]["value"]
     else: info["/freebase/documented_object/tip"] = None
+    
+    ignore = ("optional", "type", "key", "/freebase/documented_object/tip")
+    for prop in PROPERTY_QUERY.iterkeys():
+        if prop not in ignore:
+            if not info.has_key(prop):
+                info[prop] = None
 
-    for i in ["delegated", "enumeration", "expected_type", "id", "master_property", "unique", "unit",
-     "/freebase/property_hints/disambiguator", "/freebase/property_hints/display_none",
-     "/freebase/property_hints/display_orientation","/freebase/property_hints/enumeration",
-      "/freebase/property_hints/dont_display_in_weblinks", "/freebase/property_hints/inverse_description"]:
-
-        if res[i]:
-            if isinstance(res[i], basestring):
-                info[i] = res[i]
-            elif isinstance(res[i], bool):
-                info[i] = res[i]
-            elif res[i].has_key("id"):
-                info[i] = res[i]["id"]
-            elif res[i].has_key("value"):
-                info[i] = res[i]["value"]
-            else:
-                raise ValueError("There is a problem with getting the property value.")
-        else: info[i] = None
-
+    info.update(_generate_extra_properties(res, ignore))
+    
     # delete the properties that are going to be asked for in create_property
     del res["name"]
     del res["schema"]
@@ -123,7 +244,7 @@ def get_property_info(s, prop_id):
     del res["unique"]
     del res["/freebase/property_hints/disambiguator"]
     del res["/freebase/documented_object/tip"]
-
+    
     # delete other useless things...
     del res["id"]
 
@@ -136,6 +257,10 @@ def get_property_info(s, prop_id):
 
 # Create Type
 def create_type(s, name, key, ns, cvt=False, tip=None, included=None, extra=None):
+    """
+    creates a type and takes care of associating it to its domain and attaching
+    a key.
+    """
     # TODO: CREATE SYNTHETIC VIEW
     if key_exists(s, ns + "/" + key ):
         return
@@ -148,7 +273,7 @@ def create_type(s, name, key, ns, cvt=False, tip=None, included=None, extra=None
     assert included is None or isinstance(included, (basestring, list, tuple))
     assert extra is None or isinstance(extra, dict)
 
-    q = {
+    wq = {
         "create" : "unconditional",
         "type" : "/type/type",
         "/type/type/domain" : { "connect" : "insert", "id" : ns },
@@ -163,36 +288,38 @@ def create_type(s, name, key, ns, cvt=False, tip=None, included=None, extra=None
     if included:
         if isinstance(included, basestring):
             included = [included]
-        itsq = [{
+        its_q = [{
             "id|=" : included,
             "/freebase/type_hints/included_types" : [{"id" : None}]
         }]
-        r = s.mqlread(itsq)
+        r = s.mqlread(its_q)
         included_types = set(included)
         if r:
             for i in r:
                 included_types.update(map(lambda x: x["id"], i["/freebase/type_hints/included_types"]))
 
         its = [{"connect" : "insert", "id" : t} for t in included_types]
-        q['/freebase/type_hints/included_types'] = its
+        wq['/freebase/type_hints/included_types'] = its
 
     # TODO: enum
 
     if cvt:
-        q['/freebase/type_hints/mediator'] = { "connect" : "update", "value" : True }
+        wq['/freebase/type_hints/mediator'] = { "connect" : "update", "value" : True }
     if tip:
-        q['/freebase/documented_object/tip'] = { "connect" : "update", "value" : tip, "lang" : "/lang/en" }
+        wq['/freebase/documented_object/tip'] = { "connect" : "update", "value" : tip, "lang" : "/lang/en" }
     
-    if extra: q.update(extra)
-    return s.mqlwrite(q, use_permission_of=ns)
+    if extra: wq.update(extra)
+    return s.mqlwrite(wq, use_permission_of=ns)
 
 
 # Create Property
 def create_property(s, name, key, schema, expected, unique=False, disambig=False, tip=None, extra=None):
+    """
+    create a property with ect, unique, etc, and make schema and key links
+    """
     if key_exists(s, schema + "/" + key):
         return
 
-    
     # validate parameters
     # assert isinstance(name, basestring) # could be mql
     assert isinstance(key, basestring)
@@ -201,7 +328,7 @@ def create_property(s, name, key, schema, expected, unique=False, disambig=False
     assert tip is None or isinstance(tip, basestring)    
     assert extra is None or isinstance(extra, dict)
     
-    q = {
+    wq = {
         "create" : "unconditional",
         "type" : "/type/property",
         "name" : name,
@@ -214,20 +341,21 @@ def create_property(s, name, key, schema, expected, unique=False, disambig=False
         "expected_type" : { "connect" : "insert", "id" : expected }
     }
     if unique:
-         q['unique'] = { "connect" : "update", "value" : unique }
+         wq['unique'] = { "connect" : "update", "value" : unique }
     if tip:
-         q['/freebase/documented_object/tip'] = { "connect" : "update", "value" : tip, "lang" : "/lang/en" }
+         wq['/freebase/documented_object/tip'] = { "connect" : "update", "value" : tip, "lang" : "/lang/en" }
     if disambig:
-         q['/freebase/property_hints/disambiguator'] = { "connect" : "update", "value" : True }
+         wq['/freebase/property_hints/disambiguator'] = { "connect" : "update", "value" : True }
     if extra:
-         q.update(extra)
-    return s.mqlwrite(q, use_permission_of=schema)
+         wq.update(extra)
+    return s.mqlwrite(wq, use_permission_of=schema)
 
 def delegate_property(s, p, schema, name=None, key=None, expected=None, tip=None, extra=None):
-    
+    """
+    create a property with a delegate
+    """
     assert isinstance(p, basestring)
     assert isinstance(schema, basestring)
-    #assert name is None or isinstance(name, basestring)
     assert key is None or isinstance(key, basestring)
     assert expected is None or isinstance(expected, basestring)
     assert tip is None or isinstance(tip, basestring)
@@ -299,14 +427,22 @@ def reciprocate_property(s, name, key, master, unique=False, disambig=False, tip
     assert tip is None or isinstance(tip, basestring)
     assert extra is None or isinstance(extra, dict)
     
-
+    # get master information
     q = {
         "id" : master,
         "/type/property/expected_type" : None,
-        "/type/property/schema" : None }
+        "/type/property/schema" : None,
+        "/type/property/reverse_property" : None }
     r = s.mqlread(q)
     ect = r["/type/property/expected_type"]
     schema = r["/type/property/schema"]
+
+    # check to see if a master existed
+    if r["/type/property/reverse_property"]:
+        raise MetawebError("You can't reciprocate property %s who \
+                            already has a reverse property %s",
+                            (master, r["/type/property/reverse_property"]))
+
 
     master = {"master_property" : master}
     if extra: master.update(extra)
@@ -317,19 +453,29 @@ def reciprocate_property(s, name, key, master, unique=False, disambig=False, tip
 
 # dump / restore types
 def dump_base(s, base_id):
-    types = [type_object["id"] for type_object in s.mqlread({"id" : base_id, "/type/domain/types":[{"id" : None}]})["/type/domain/types"]]
+    """ dump a base into a `graph` object. See information at the top of the file for more
+    information on the graph file """
+    types = [add_type_to_object["id"] for type_object in s.mqlread({"id" : base_id, "/type/domain/types":[{"id" : None}]})["/type/domain/types"]]
     graph = _get_graph(s, types, True)
         
     return graph
 
 def dump_type(s, type_id, follow_types=True):
+    """ dump a type (similar to dump_base) and has an argument follow_types that determines
+    if it should dump types that are neccessary or just rely on them """
     types = [type_id]
     graph = _get_graph(s, types, follow_types)
     
     return graph
 
 def restore(s, graph, new_location, ignore_types=None):
+    """ given a `graph` object and a another location, we can upload our graph output
+    into a new location in the freebase graph """
     follow_types = graph.get("__follow_types", True)
+    
+    # We assume the new_location is empty. if it isn't, we bail.
+    # well, ...
+    
     
     # create type dependencies
     type_requires_graph = {}
@@ -376,8 +522,7 @@ def restore(s, graph, new_location, ignore_types=None):
         if graph[type_id]["/freebase/documented_object/tip"]:
             tip = graph[type_id]["/freebase/documented_object/tip"]["value"]
         
-        ignore = ("name", "domain", "key", "type", "id", "properties", "/freebase/type_hints/enumeration",
-                    "/freebase/type_hints/included_types", "/freebase/type_hints/mediator", "/freebase/documented_object/tip")
+        ignore = TYPE_INGORE_PROPERTIES
         extra = _generate_extra_properties(graph[type_id], ignore)
         
         name = graph[type_id]["name"]["value"]
@@ -386,7 +531,7 @@ def restore(s, graph, new_location, ignore_types=None):
         
         create_type(s, name, key, new_location_id, included=included, cvt=cvt, tip=tip, extra=extra)
     
-    for prop_id in props_to_create: #* prop_id
+    for prop_id in props_to_create:
         type_id = prop_to_type_map[prop_id]
         all_properties_for_type = graph[type_id]["properties"]
         for prop in all_properties_for_type:
@@ -412,17 +557,14 @@ def restore(s, graph, new_location, ignore_types=None):
                 disambig = prop["/freebase/property_hints/disambiguator"]
                 unique = prop["unique"]
                 
-                ignore = ("name", "expected_type", "key", "id", "master_property", "delegated", "unique", "type", "schema",
-                            "/freebase/property_hints/disambiguator", "enumeration", "/freebase/property_hints/enumeration", 
-                            "/freebase/documented_object/tip")
-                
+                ignore = PROPERTY_IGNORE_PROPERTIES
                 extra = _generate_extra_properties(prop, ignore)   
                 
                 if prop['master_property']:
                     converted_master_property = _convert_name_to_new(prop["master_property"], origin_id, new_location_id, only_include)
                     if converted_master_property == prop["master_property"]:
                         raise CVTError("You can't set follow_types to False if there's a cvt. A cvt requires you get all the relevant types. Set follow_types to true.\n" + \
-                                        "The offending property was %s, whose master was %s." % (prop["id"], prop["master_property"]))
+                                       "The offending property was %s, whose master was %s." % (prop["id"], prop["master_property"]))
                     reciprocate_property(s, name, key, converted_master_property,
                         unique, disambig=disambig, tip=tip, extra=extra)
                 
@@ -431,9 +573,8 @@ def restore(s, graph, new_location, ignore_types=None):
                         expected=expected, tip=tip, extra=extra)
                 
                 else:
-                    create_property(s, name, key, new_schema, expected, unique, 
-                        disambig=disambig, tip=tip, extra=extra) 
-                        
+                    create_property(s, name, key, new_schema, expected, unique,
+                        disambig=disambig, tip=tip, extra=extra)
 
 def _get_graph(s, initial_types, follow_types):
     """ get the graph of dependencies of all the types involved, starting with a list supplied """
@@ -517,10 +658,13 @@ def _generate_extra_properties(dictionary_of_values, ignore):
                     extra.update({k:v["value"]})
                 else:
                     raise ValueError("There is a problem with getting the property value.")
+            else:
+                if isinstance(v, bool): # well, if its False...
+                    extra.update({k:v})
     return extra
 
 def _get_needed(s, type_id):
-    q = TYPE_QUERY
+    q = deepcopy(TYPE_QUERY)
     q.update(id=type_id)
 
     r = s.mqlread(q)
@@ -557,7 +701,7 @@ def _get_needed(s, type_id):
 
     # return all the information along with our special __* properties
     info = r
-    info.update(__related=related, __requires=requires, __properties=properties)
+    info.update(__related=related, __requires=requires)
 
     return info
 
@@ -574,8 +718,6 @@ def _return_relevant(start_list, parents):
             final.append(item)
     return final
 
-
-
 PROPERTY_QUERY = {
         "optional" : True,
         "type" : "/type/property",
@@ -587,10 +729,8 @@ PROPERTY_QUERY = {
             "namespace" : None, 
             "value" : None
         }],
-        #"link" : [{}], 
         "master_property" : None,
         "name" : {"value" : None, "lang" : "/lang/en", "optional":True}, 
-        "schema" : {"id" : None, "name" : None},
         "unique" : None, 
         "unit" : None,
         "/freebase/documented_object/tip" : {"value" : None, "limit":1, "optional" : True},
@@ -613,5 +753,11 @@ TYPE_QUERY = {
         "/freebase/type_hints/minor" : None,
         "/freebase/documented_object/tip" : {"value" : None, "limit":1, "optional":True},
         }
-TYPE_QUERY.update(properties=[PROPERTY_QUERY])    
+TYPE_QUERY.update(properties=[deepcopy(PROPERTY_QUERY)])    
 
+TYPE_INGORE_PROPERTIES = ("name", "domain", "key", "type", "id", "properties", "/freebase/type_hints/enumeration",
+            "/freebase/type_hints/included_types", "/freebase/type_hints/mediator", "/freebase/documented_object/tip")
+
+PROPERTY_IGNORE_PROPERTIES = ("name", "expected_type", "key", "id", "master_property", "delegated", "unique", "type", "schema",
+            "/freebase/property_hints/disambiguator", "enumeration", "/freebase/property_hints/enumeration", 
+            "/freebase/documented_object/tip")

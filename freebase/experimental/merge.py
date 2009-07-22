@@ -45,7 +45,7 @@ def merge(s, amoeba_id, target_id):
 
     # type amoeba with new types in target
     for type_id in target_types:
-        freebase.schema.type_object(s, amoeba_id, type_id)
+        freebase.schema.add_type_to_object(s, amoeba_id, type_id)
 
     # get all properties of target
     mega_target_query = { "id" : target_id }
@@ -97,8 +97,19 @@ def merge(s, amoeba_id, target_id):
     s.mqlwrite(master_write_amoeba_query)
     
     # make name of target an alias in amoeba
-    make_alias_query = {"id" : amoeba_id,
-                        "alias" : dddddddddddddddddd}
+    get_amoeba_name_query = {"id" : amoeba_id,
+                             "name" : None }
+    get_target_alias_query = {"id" : target_id,
+                              "/common/topic/alias" : [{}] }
+    amoeba_name, target_aliases = s.mqlread([get_amoeba_name_query,
+                                            get_target_alias_query])
+    # TODO:
+    #set_alias_query = {"id" : amoeba_id}
+    #for alias in target_aliases["/common/topic/alias"]:
+    #    if alias.value != amoeba_name:
+    #        set_alias_query.update({"lang": "/lang/en",
+    #        "value": "Beeetles",
+    #        "connect": "insert"})
     
     # migrate data (thinks linking here)
     # get all the links from the target to someone else

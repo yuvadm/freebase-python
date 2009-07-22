@@ -254,6 +254,7 @@ class FbCommandHandler(object):
 
         self.import_commands('freebase.fcl.commands')
         self.import_commands('freebase.fcl.mktype')
+        self.import_commands('freebase.fcl.schema')
 
         cmd = args.pop(0)
         self.dispatch(cmd, args)

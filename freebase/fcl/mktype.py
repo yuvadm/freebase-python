@@ -29,6 +29,7 @@
 import os, sys, re, time
 from fbutil import *
 
+from freebase.schema import create_object, create_type
 
 def cmd_mkobj(fb, id, typeid='/common/topic', name=''):
     """create a new object with a given type  -- EXPERIMENTAL
@@ -41,28 +42,10 @@ def cmd_mkobj(fb, id, typeid='/common/topic', name=''):
     
     """
     id = fb.absid(id)
-    nsid, key = dirsplit(id)
-
-    typeid = fb.absid(typeid)
-
-    if name == '':
-        name = key
-
-    wq = { 'create': 'unless_exists',
-           'id': None,
-           'name': name,
-           'type': typeid,
-           'key':{
-               'namespace': nsid,
-               'value': key
-           },
-         }
-
-    # TODO add included types
-
-    r = fb.mss.mqlwrite(wq)
-    print r.id,r.create
-
+    
+    return create_object(fb.mss, name="", path=id, 
+                        included_types=type_id, create="unless_exists")
+                
 def cmd_mktype(fb, id, name=''):
     """create a new type  -- EXPERIMENTAL
     %prog mktype new_id name
@@ -73,26 +56,12 @@ def cmd_mktype(fb, id, name=''):
     this doesn't create any type hints.
 
     if present, name gives the display name of the new property
+    
+    For more options when creating a type, use the python library
     """
     id = fb.absid(id)
-
-    nsid, key = dirsplit(id)
-
-    if name == '':
-        name = key
-
-    wq = { 'create': 'unless_exists',
-           'id': None,
-           'name': name,
-           'type': '/type/type',
-           'key':{
-               'namespace': nsid,
-               'value': key
-           },
-         }
-
-    r = fb.mss.mqlwrite(wq)
-    print r.id,r.create
+    ns, key = dirsplit(id)
+    return create_type(s, name, key, ns, cvt=False, tip=None, included=None, extra=None):
 
 def mkprop(fb, typeid, key, name='', vtype=None, master_property=None):
     """helper to create a new property

@@ -860,7 +860,8 @@ class HTTPMetawebSession(MetawebSession):
         """DEPRECATED: reconcile name to guid. For a more complete description,
         see http://www.freebase.com/view/en/dataserver_reconciliation
         
-        If interested, check out http://data.labs.freebase.com/recon/"""
+        If interested in a non-deprecated version,
+        check out http://data.labs.freebase.com/recon/"""
         
         service = '/dataserver/reconciliation'
         r = self._httpreq_json(service, 'GET', form={'name':name, 'types':','.join(etype)})
@@ -869,99 +870,6 @@ class HTTPMetawebSession(MetawebSession):
         # TODO non-conforming service, fix later
         #self._mqlresult(r)
         return r
-
-    ### SCHEMA MANIPULATION ###
-    # Object helpers
-    def create_object(self, name="", path=None, key=None, namespace=None, 
-                        included_types=None, create="unless_exists",
-                        extra=None, use_permission_of=None, attribution=None):
-        if type(included_types) is str:
-            included_types = [included_types]
-
-        if path and (key or namespace):
-            raise ValueError("You can't specify both the path and a key and namespace.")
-
-        if path:
-            key, namespace = get_key_namespace(path)
-
-        if (key and not namespace) or (not key and namespace):
-            raise ValueError("You must either specify both a key and a namespace, or neither.")
-
-        if included_types:
-            its = set(included_types)
-            q = [{
-                "id|=" : included_types,
-                "/freebase/type_hints/included_types" : [{"id" : None}]
-            }]
-            for res in self.mqlread(q):
-                its.update([x["id"] for x in res["/freebase/type_hints/included_types"]])
-
-        wq = {
-            "id" : None,
-            "name" : name,
-            "create" : create
-        }
-
-        # conditionally add key creation
-        if key:
-            wq.update({"key" : { 
-                "namespace" : namespace,
-                "value" : key,
-            }})
-
-        if included_types:
-            wq.update(type = [{ "id" : it, "connect" : "insert" } for it in its])
-
-        if extra: 
-            wq.update(extra)
-
-        return self.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
-
-
-    def connect_object(self, id, newpath, extra=None, use_permission_of=None, attribution=None):
-
-        key, namespace = get_key_namespace(newpath)
-
-        wq = {
-            "id" : id,
-            "key" : {
-                "namespace" : namespace,
-                "value" : key,
-                "connect" : "insert"
-            }
-        }
-
-        if extra: wq.update(extra)
-
-        return self.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
-
-
-    def disconnect_object(self, id, extra=None, use_permission_of=None, attribution=None):
-
-        key, namespace = get_key_namespace(id)
-
-        wq = {
-            "id" : id,
-            "key" : {
-                "namespace" : namespace,
-                "value" : key,
-                "connect" : "delete"
-            }
-        }
-        if extra: wq.update(extra)
-        return self.mqlwrite(wq, use_permission_of=use_permission_of, attribution_id=attribution)
-
-    def move_object(self, oldpath, newpath, use_permission_of=None, attribution=None):
-        a = self.connect_object(oldpath, newpath, use_permission_of=use_permission_of, attribution=attribution)
-        b = self.disconnect_object(oldpath, use_permission_of=use_permission_of, attribution=attribution)
-        return a, b
-    
-
-
-def get_key_namespace(path):
-    # be careful with /common
-    namespace, key = path.rsplit("/", 1)
-    return (key, namespace or "/")
 
 
 if __name__ == '__main__':
