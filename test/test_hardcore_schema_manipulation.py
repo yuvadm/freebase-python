@@ -11,7 +11,7 @@ from freebase.schema import dump_type, dump_base, restore
 
 USERNAME = 'username'
 PASSWORD = 'password'
-API_HOST = 'sandbox.freebase.com'
+API_HOST = 'sandbox-freebase.com'
 
 s = freebase.api.HTTPMetawebSession(API_HOST)
 

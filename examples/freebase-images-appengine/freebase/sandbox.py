@@ -30,7 +30,7 @@
 import sys
 from freebase.api.session import HTTPMetawebSession
 
-_base = HTTPMetawebSession("sandbox.freebase.com")
+_base = HTTPMetawebSession("sandbox-freebase.com")
 
 __all__ = ["HTTPMetawebSession"]
 

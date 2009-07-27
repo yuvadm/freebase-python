@@ -218,7 +218,7 @@ class FbCommandHandler(object):
 
         op.add_option('-S', '--sandbox', dest='use_sandbox',
                         default=False, action='store_true',
-                        help='shortcut for --service=sandbox.freebase.com')
+                        help='shortcut for --service=sandbox-freebase.com')
 
         op.add_option('-c', '--cookiejar', dest='cookiefile',
                         metavar='FILE',
@@ -240,7 +240,7 @@ class FbCommandHandler(object):
         log.setLevel(loglevel)
 
         if options.use_sandbox:
-            self.service_host = 'sandbox.freebase.com'
+            self.service_host = 'sandbox-freebase.com'
         else:
             self.service_host = options.service_host
 

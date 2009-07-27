@@ -32,7 +32,7 @@ declarations for external metaweb api.
     
     from metaweb.api import HTTPMetawebSession
     
-    mss = HTTPMetawebSession('sandbox.freebase.com')
+    mss = HTTPMetawebSession('sandbox-freebase.com')
     print mss.mqlread([dict(name=None, type='/type/type')])
 """
 
@@ -876,7 +876,7 @@ if __name__ == '__main__':
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
     
-    mss = HTTPMetawebSession('sandbox.freebase.com')
+    mss = HTTPMetawebSession('sandbox-freebase.com')
     
     mss.log.setLevel(logging.DEBUG)
     mss.log.addHandler(console)

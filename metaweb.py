@@ -43,12 +43,12 @@ import cookielib     # Cookie handling
 import os
 
 #
-# When experimenting, use the sandbox.freebase.com service.
-# Every Monday, sandbox.freebase.com is erased and it is updated
+# When experimenting, use the sandbox-freebase.com service.
+# Every Monday, sandbox-freebase.com is erased and it is updated
 # with a fresh copy of data from www.freebase.com.  This makes
 # it an ideal place to experiment.
 #
-host = 'sandbox.freebase.com'              # The Metaweb host
+host = 'sandbox-freebase.com'              # The Metaweb host
 readservice = '/api/service/mqlread'   # Path to mqlread service
 loginservice = '/api/account/login'     # Path to login service
 writeservice = '/api/service/mqlwrite'  # Path to mqlwrite service
