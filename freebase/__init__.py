@@ -5,7 +5,7 @@ import sandbox
 
 __all__ = ["HTTPMetawebSession", "sandbox"]
 
-_base = HTTPMetawebSession("http://freebase.com")
+_base = HTTPMetawebSession("http://api.freebase.com")
 
 # we want to add base's functions to __init__.py
 # so that we can say freebase.func() and really
