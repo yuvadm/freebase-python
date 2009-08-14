@@ -27,6 +27,7 @@
 # ====================================================================
 
 import os, sys, re, time
+from cmdutil import *
 from fbutil import *
 
 from freebase.schema import create_object, create_type
@@ -61,7 +62,7 @@ def cmd_mktype(fb, id, name=''):
     """
     id = fb.absid(id)
     ns, key = dirsplit(id)
-    return create_type(s, name, key, ns, cvt=False, tip=None, included=None, extra=None):
+    return create_type(s, name, key, ns, cvt=False, tip=None, included=None, extra=None)
 
 def mkprop(fb, typeid, key, name='', vtype=None, master_property=None):
     """helper to create a new property

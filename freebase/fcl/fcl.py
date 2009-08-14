@@ -36,7 +36,9 @@ import logging
 import simplejson
 
 
-from fbutil import FbException, CmdException, log, default_propkeys
+from cmdutil import CmdException, log, out
+from fbutil import FbException, default_propkeys
+
 console = logging.StreamHandler()
 log.addHandler(console)
 
@@ -45,6 +47,7 @@ from freebase.api import HTTPMetawebSession, MetawebError, attrdict
 _cookiedir = None
 if os.environ.has_key('HOME'):
     _cookiedir = os.path.join(os.environ['HOME'], '.pyfreebase')
+
 
 
 class Command(object):
@@ -64,9 +67,10 @@ class Command(object):
             self.shortdoc = '(missing documentation)'
             self.doc = '(missing documentation)'
 
+        self.oparser = getattr(func, 'oparser', None)
 
 
-class FbCommandHandler(object):
+class FclCommandHandler(object):
 
     def __init__(self):
         self.service_host = 'www.freebase.com'
@@ -98,6 +102,7 @@ class FbCommandHandler(object):
     def absid(self, path):
         if path is None:
             path = ''
+
         if path.startswith('/'):
             return path
 
@@ -154,7 +159,7 @@ class FbCommandHandler(object):
 
     def import_commands(self, modname):
         """
-        import new fb commands from a file
+        import new fcl commands from a file
         """
         namespace = {}
     
@@ -175,23 +180,21 @@ class FbCommandHandler(object):
         log.info('imported %r from %r' % (modname, mod.__file__))
 
 
-    def dispatch(self, cmd, args):
-        if cmd in self.commands:
-            try:
-                self.commands[cmd].func(self, *args)
-            except KeyboardInterrupt, e:
-                sys.stderr.write('%s\n' % (str(e),))
-            except FbException, e:
-                sys.stderr.write('%s\n' % (str(e),))
-            except CmdException, e:
-                sys.stderr.write('%s\n' % (str(e),))
-            except MetawebError, e:
-                sys.stderr.write('%s\n' % (str(e),))
-        else:
-            self.oparser.error('unknown subcommand %r, try "%s help"' % (cmd, self.progpath))
+    def dispatch(self, cmd, args, kws):
+        try:
+            cmd.func(self, *args, **kws)
 
-        self.save()
-        
+            # flush the output
+            out.flush()
+        except KeyboardInterrupt, e:
+            sys.stderr.write('%s\n' % (str(e),))
+        except FbException, e:
+            sys.stderr.write('%s\n' % (str(e),))
+        except CmdException, e:
+            sys.stderr.write('%s\n' % (str(e),))
+        except MetawebError, e:
+            sys.stderr.write('%s\n' % (str(e),))
+       
 
     def cmdline_main(self):
         op = OptionParser(usage='%prog [options] command [args...] ')
@@ -256,8 +259,24 @@ class FbCommandHandler(object):
         self.import_commands('freebase.fcl.mktype')
         self.import_commands('freebase.fcl.schema')
 
-        cmd = args.pop(0)
-        self.dispatch(cmd, args)
+        subcmd = args.pop(0)
+
+        if subcmd in self.commands:
+            cmd = self.commands[subcmd]
+
+            if cmd.oparser is not None:
+                options,args = cmd.oparser.parse_args(args)
+                kws = options.__dict__
+            else:
+                kws = {}
+
+            self.dispatch(cmd, args, kws)
+        else:
+            self.oparser.error('unknown subcommand %r, try "%s help"' % (subcmd, self.progpath))
+
+        self.save()
+
+
 
 # entry point for script
 def main():
@@ -270,8 +289,8 @@ def main():
     except ImportError:
         pass
 
-    fb = FbCommandHandler()
-    fb.cmdline_main()
+    fcl = FclCommandHandler()
+    fcl.cmdline_main()
 
 if __name__ == '__main__':
     main()
