@@ -28,6 +28,7 @@
 
 import os, sys, re, time
 from fbutil import *
+from cmdutil import *
 
 import simplejson
 
@@ -124,20 +125,33 @@ def old_cmd_pwid(fb):
         print ''
 
 
-def cmd_ls(fb, path=None):
+@option('long', '-l', default=False, action='store_true', help='show time and permission')
+def cmd_ls(fb, path=None, long=False):
     """list the keys in a namespace
 
     %prog ls [id]
     """
     path = fb.absid(path)
+    # ignore trailing /
+    path = re.sub('/$', '', path)
+
+    kq = {
+        'value': None,
+        'namespace': {
+            'id': None,
+            'type': []
+        },
+        'sort': 'value',
+        'optional':True
+        }
+
+    if long:
+        kq['namespace']['permission'] = None
+        kq['namespace']['creator'] = None
+            
+
     q = {'id': path,
-         '/type/namespace/keys': [{'value': None,
-                                   'namespace': {
-                                       'id': None,
-                                       'type': []
-                                    },
-                                    'optional':True
-                                   }]
+         '/type/namespace/keys': [kq]
          }
 
     r = fb.mss.mqlread(q)
@@ -147,7 +161,10 @@ def cmd_ls(fb, path=None):
     #sys.stdout.write(' '.join([mk.value for mk in r['/type/namespace/keys']]))
 
     for mk in r['/type/namespace/keys']:
-        print mk.value
+        if (long):
+            out(mk.value, mk.namespace.permission, mk.namespace.creator)
+        else:
+            out(mk.value)
 
     if 0:
         suffix = ''
@@ -166,6 +183,8 @@ def cmd_mkdir(fb, path):
     a namespace.
     """
     path = fb.absid(path)
+    # ignore trailing /
+    path = re.sub('/$', '', path)
     dir,file = dirsplit(path)
     wq = { 'create': 'unless_exists',
            'key':{
@@ -189,6 +208,10 @@ def cmd_ln(fb, src, dst):
     src = fb.absid(src)
     dst = fb.absid(dst)
     
+    # ignore trailing /
+    src = re.sub('/$', '', src)
+    dst = re.sub('/$', '', dst)
+
     return connect_object(fb.mss, src, dst)
 
 def cmd_rm(fb, path):
@@ -205,7 +228,9 @@ def cmd_rm(fb, path):
     disturb anything other than the one directory entry.
     """
     path = fb.absid(path)
-    
+    # ignore trailing /
+    path = re.sub('/$', '', path)
+
     return disconnect_object(fb.mss, path)
 
 def cmd_mv(fb, src, dst):
@@ -252,6 +277,9 @@ def cmd_get(fb, id, localfile=None, include_headers=False):
                '/type/content/blob_id':None,
              }
         cd = fb.mss.mqlread(cq)
+        if cd is None:
+            raise CmdException('no match for id %r' % id)
+        
         if '/type/content' in cd.type:
             c.media_type = cd['/type/content/media_type'].name
             #c.text_encoding = cd['/type/content/text_encoding'].name
@@ -392,7 +420,7 @@ def cmd_dump(fb, id):
             else:
                 extra = ''
 
-            fb.trow(k, id, name, type, extra)
+            out(k, id, name, type, extra)
                     
 
 def cmd_pget(fb, id, propid):
@@ -524,21 +552,28 @@ def cmd_pset(fb, id, propkey, val, oldval=None, extra=None):
         wq[propkey]['id'] = val
     elif prop.expected_type.id not in value_types:
         wq[propkey]['id'] = val
+    elif prop.expected_type.id == '/type/float':
+        wq[propkey]['value'] = float(val)
+    elif prop.expected_type.id == '/type/int':
+        wq[propkey]['value'] = int(val)
+    elif prop.expected_type.id == '/type/boolean':
+        wq[propkey]['value'] = bool(val)
+    elif prop.expected_type.id == '/type/text':
+        wq[propkey]['value'] = val
+        if extra is not None:
+            lang = extra
+        else:
+            lang = '/lang/en'
+        wq[propkey]['lang'] = lang
+    elif prop.expected_type.id == '/type/key':
+        wq[propkey]['value'] = val
+        if extra is not None:
+            wq[propkey]['namespace'] = extra
+        else:
+            raise CmdException('must specify a namespace to pset /type/key')
     else:
         wq[propkey]['value'] = val
-    
-        if prop.expected_type.id == '/type/text':
-            if extra is not None:
-                lang = extra
-            else:
-                lang = '/lang/en'
-            wq[propkey]['lang'] = lang
-    
-        if prop.expected_type.id == '/type/key':
-            if extra is not None:
-                wq[propkey]['namespace'] = extra
-            else:
-                raise CmdException('must specify a namespace to pset /type/key')
+
 
     r = fb.mss.mqlwrite(wq)
     print r[propkey]['connect']
@@ -592,7 +627,8 @@ def cmd_find(fb, qstr):
 
     results = fb.mss.mqlreaditer(q)
     for r in results:
-        print r.id
+        out(r.id)
+
 
 def cmd_q(fb, qstr):
     """run a freebase query.
@@ -609,9 +645,16 @@ def cmd_q(fb, qstr):
     else:
         q = rison.loads('(' + qstr + ')')
 
-    # results could be streamed with a little more work
-    results = fb.mss.mqlreaditer(q)
-    print simplejson.dumps(list(results), indent=2)
+    # done this way for streaming
+    first = True
+    for result in fb.mss.mqlreaditer(q):
+        if first:
+            first = False
+            print '[',
+        else:
+            print ',',
+        print simplejson.dumps(result, indent=2),
+    print ']'
 
 def cmd_open(fb, id):
     """open a web browser on the given id.  works on OSX only for now.
