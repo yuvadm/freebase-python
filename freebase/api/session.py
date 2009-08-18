@@ -405,7 +405,7 @@ class HTTPMetawebSession(MetawebSession):
 
 
     
-    def login(self, username=None, password=None):
+    def login(self, username=None, password=None, rememberme=False):
         """sign in to the service. For a more complete description,
         see http://www.freebase.com/view/en/api_account_login"""
         
@@ -418,10 +418,14 @@ class HTTPMetawebSession(MetawebSession):
         assert password is not None
         
         self.log.debug('LOGIN USERNAME: %s', username)
-        
+
+        rememberme = rememberme and "true" or "false"
+        form_params = {"username": username,
+                       "password": password }
+        if rememberme:
+            form_params["rememberme"] = "true"
         r = self._httpreq_json(service, 'POST',
-                               form=dict(username=username,
-                                         password=password))
+                               form=form_params)
         
         if r.code != '/api/status/ok':
             raise MetawebError(u'%s %r' % (r.get('code',''), r.messages))
