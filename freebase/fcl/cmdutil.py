@@ -42,7 +42,7 @@ class CmdException(Exception):
 
 # decorator for adding subcommand option parsers
 def option(argname, *args, **kws):
-    kws['dest'] = 'long'
+    kws['dest'] = argname
     def decorate(f):
         oparser = getattr(f, 'oparser', None)
         if oparser is None:

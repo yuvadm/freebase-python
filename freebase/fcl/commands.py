@@ -126,29 +126,37 @@ def old_cmd_pwid(fb):
 
 
 @option('long', '-l', default=False, action='store_true', help='show time and permission')
-def cmd_ls(fb, path=None, long=False):
+@option('timesort', '-t', default=False, action='store_true', help='sort by time')
+@option('revsort', '-r', default=False, action='store_true', help='reverse sort order')
+def cmd_ls(fb, path=None, long=False, timesort=False, revsort=False):
     """list the keys in a namespace
 
     %prog ls [id]
     """
     path = fb.absid(path)
     # ignore trailing /
-    path = re.sub('/$', '', path)
+    if len(path) > 1:
+        path = re.sub('/$', '', path)
 
     kq = {
         'value': None,
         'namespace': {
-            'id': None,
-            'type': []
+            'id': None
         },
         'sort': 'value',
         'optional':True
-        }
+     }
 
-    if long:
-        kq['namespace']['permission'] = None
-        kq['namespace']['creator'] = None
-            
+    if long or timesort:
+        kq['link'] = {
+            'timestamp': None,
+            'creator': None
+          }
+    if timesort:
+        kq['sort'] = 'link.timestamp'
+
+    if revsort:
+        kq['sort'] = '-' + kq['sort']
 
     q = {'id': path,
          '/type/namespace/keys': [kq]
@@ -162,7 +170,10 @@ def cmd_ls(fb, path=None, long=False):
 
     for mk in r['/type/namespace/keys']:
         if (long):
-            out(mk.value, mk.namespace.permission, mk.namespace.creator)
+            # trim off the /user/
+            creator = re.sub('^/user/', '', mk.link.creator)
+            timestamp = mk.link.timestamp
+            out(mk.value, creator, timestamp)
         else:
             out(mk.value)
 
@@ -172,6 +183,7 @@ def cmd_ls(fb, path=None, long=False):
             or '/type/domain' in mk.namespace.type):
             suffix = '/'
         print mk.value, mk.namespace.id+suffix
+
 
 
 def cmd_mkdir(fb, path):
