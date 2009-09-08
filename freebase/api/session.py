@@ -296,7 +296,8 @@ class HTTPMetawebSession(MetawebSession):
             assert ct is not None
         
         if form is not None:
-            qstr = '&'.join(['%s=%s' % (urlencode_weak(unicode(k)), urlencode_weak(unicode(v)))
+            qstr = '&'.join(['%s=%s' % (urlencode_weak(unicode(k).encode('utf-8')),
+                                        urlencode_weak(unicode(v).encode('utf-8')))
                              for k,v in form.items()])
             if method == 'POST':
                 # put the args on the url if we're putting something else
@@ -510,7 +511,7 @@ class HTTPMetawebSession(MetawebSession):
             
             qstr = json.dumps(subq, separators=SEPARATORS)
                         
-            r = self._httpreq_json(service, form=dict(query=qstr))
+            r = self._httpreq_json(service, 'POST', form=dict(query=qstr))
             
             for item in self._mqlresult(r):
                 yield item
@@ -538,7 +539,7 @@ class HTTPMetawebSession(MetawebSession):
                       Delayed(logformat, sq))
         
         qstr = json.dumps(subq, separators=SEPARATORS)
-        r = self._httpreq_json(service, form=dict(query=qstr))
+        r = self._httpreq_json(service, 'POST', form=dict(query=qstr))
         
         return self._mqlresult(r)
     
@@ -563,7 +564,7 @@ class HTTPMetawebSession(MetawebSession):
                       Delayed(logformat, envelope))
         
         qstr = json.dumps(envelope, separators=SEPARATORS)
-        rs = self._httpreq_json(service, form=dict(queries=qstr))
+        rs = self._httpreq_json(service, 'POST', form=dict(queries=qstr))
         
         self.log.info('%s result: %s',
                       service,
