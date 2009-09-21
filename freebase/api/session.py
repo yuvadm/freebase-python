@@ -209,7 +209,7 @@ class HTTPMetawebSession(MetawebSession):
     #  see each other's writes immediately.
     _default_cookiejar = cookielib.CookieJar()
     
-    def __init__(self, service_url, username=None, password=None, prev_session=None, cookiejar=None, cookiefile=None):
+    def __init__(self, service_url, username=None, password=None, prev_session=None, cookiejar=None, cookiefile=None, application_name=None):
         """
         create a new MetawebSession for interacting with the Metaweb.
         
@@ -217,7 +217,8 @@ class HTTPMetawebSession(MetawebSession):
         """
         super(HTTPMetawebSession, self).__init__()
         
-        self.log = logging.getLogger()
+        self.log = logging.getLogger("freebase")
+        self.application_name = application_name
         
         assert not service_url.endswith('/')
         if not '/' in service_url:  # plain host:port
@@ -323,7 +324,10 @@ class HTTPMetawebSession(MetawebSession):
         headers['x-metaweb-request'] = 'Python'
         
         if 'user-agent' not in headers:
-            headers['user-agent'] = 'python freebase.api-%s' % __version__
+            user_agent = ["python", "freebase.api-%s" % __version__]
+            if self.application_name:
+                user_agent.append(self.application_name)
+            headers['user-agent'] = ' '.join(user_agent)
         
         ####### DEBUG MESSAGE - should check log level before generating
         loglevel = self.log.getEffectiveLevel()

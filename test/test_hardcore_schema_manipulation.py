@@ -73,11 +73,11 @@ class TestHardcoreSchemaManipulation(unittest.TestCase):
         
     def test_restore_over_restore(self):
         domain_id = _create_domain()
-        graph = dump_domain(s, "/base/contractbridge")   
+        graph = dump_base(s, "/base/contractbridge")   
         restore(s, graph, domain_id)
         
         # now we restore again... it should raise a MetawebError
-        self.assertRaises(MetawebError, restore(s, graph, domain_id))
+        self.assertRaises(MetawebError, restore, s, graph, domain_id)
     
     def test_try_copying_a_cvt(self):
         

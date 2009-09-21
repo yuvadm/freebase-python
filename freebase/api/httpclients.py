@@ -24,7 +24,7 @@ class Urllib2Client(object):
         cookiespy = urllib2.HTTPCookieProcessor(cookiejar)
         self.opener = urllib2.build_opener(cookiespy)
         self._raise_service_error = rse
-        self.log = logging.getLogger()
+        self.log = logging.getLogger("freebase")
 
     def __call__(self, url, method, body, headers):
         req = urllib2.Request(url, body, headers)

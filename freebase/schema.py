@@ -455,7 +455,10 @@ def reciprocate_property(s, name, key, master, unique=False, disambig=False, tip
 def dump_base(s, base_id):
     """ dump a base into a `graph` object. See information at the top of the file for more
     information on the graph file """
-    types = [add_type_to_object["id"] for type_object in s.mqlread({"id" : base_id, "/type/domain/types":[{"id" : None}]})["/type/domain/types"]]
+    domain_types = s.mqlread({"id" : base_id,
+                              "/type/domain/types": [{"id" : None}]})
+    types = [type_object["id"]
+             for type_object in domain_types["/type/domain/types"]]
     graph = _get_graph(s, types, True)
         
     return graph
