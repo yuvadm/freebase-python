@@ -30,7 +30,10 @@ import os, sys, re, time
 from fbutil import *
 from cmdutil import *
 
-import simplejson
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 import freebase.rison as rison
 from freebase.api import attrdict
@@ -410,9 +413,9 @@ def cmd_dump(fb, id):
     """
     id = fb.absid(id)
 
-    import inspect
+    import inspection
 
-    r = inspect.inspect_object(fb.mss, id)
+    r = inspection.inspect_object(fb.mss, id)
     if r is None:
         raise CmdException('no match for id %r' % id)
 

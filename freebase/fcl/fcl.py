@@ -33,7 +33,12 @@ from optparse import OptionParser
 import getpass
 import cookielib
 import logging
-import simplejson
+import inspect
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 
 from cmdutil import CmdException, log, out
@@ -182,6 +187,13 @@ class FclCommandHandler(object):
 
     def dispatch(self, cmd, args, kws):
         try:
+            spec = inspect.getargspec(cmd.func)
+            required = len(spec.args) - len(spec.defaults or ())
+            if len(args) < (required-1):
+                sys.stderr.write("%s: arguments \"%s\" required\n" %
+                                 (cmd.func.__name__,
+                                 '\", \"'.join(spec.args[1:required])))
+                sys.exit(1)
             cmd.func(self, *args, **kws)
 
             # flush the output
