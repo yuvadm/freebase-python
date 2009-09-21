@@ -28,7 +28,7 @@ def cmd_dump_type(fb, baseid, follow_types=True):
     """
     print >> sys.stdout, json.dumps(dump_type(fb.mss, typeid, follow_types), indent=2)
 
-def cmd_restore(fb, newlocation=None, graphfile=None):
+def cmd_restore(fb, newlocation, graphfile):
     """restore a graph object to the graph
     %prog restore newlocation graphfile
 

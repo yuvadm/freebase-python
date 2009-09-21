@@ -1,5 +1,5 @@
 from copy import deepcopy
-
+import sys
 from freebase.api.session import HTTPMetawebSession, MetawebError
 from freebase.api.session import LITERAL_TYPE_IDS
 
@@ -501,9 +501,31 @@ def restore(s, graph, new_location, ignore_types=None):
     
     types_to_create = _generate_dependency_creation_order(type_requires_graph)
     props_to_create = _generate_dependency_creation_order(prop_requires_graph)
-        
-    origin_id, new_location_id = s.mqlreadmulti([{"id" : types_to_create[0], "type" : "/type/type", "domain" : {"id" : None}},
-                                               {"id" : new_location, "a:id" : None}])                         
+
+    # make sure we're starting fresh - sometimes your mwLastWriteTime
+    # isn't fresh if create_private_domain fails
+    s.touch()
+    origin_id, new_location_id = s.mqlreadmulti([{"id" : types_to_create[0],
+                                                  "type" : "/type/type",
+                                                  "domain" : {"id" : None}},
+                                                 {"id" : new_location,
+                                                  "a:id" : None}])
+
+    if new_location_id is None:
+        # create the domain if it doesnt' exist already
+        username = s.user_info()["username"]
+        user_id = "/user/%s" % username
+        if not new_location.startswith("%s/" % user_id):
+            sys.stderr.write("%s does not exist: If creating a domain outside of %s, you must create it yourself\n" % (new_location, user_id))
+            sys.exit(1)
+
+        location_key = new_location[len(user_id)+1:]
+        tail_key = new_location.rsplit("/", 1)[-1]
+        if tail_key != location_key:
+            sys.stderr.write("%s does not exist: can only create domains as direct children of %s\n" % (new_location, user_id))
+            sys.exit(1)
+        s.create_private_domain(location_key, location_key)
+    
     origin_id = origin_id["domain"]["id"]
     new_location_id = new_location_id["a:id"]
     
@@ -529,7 +551,8 @@ def restore(s, graph, new_location, ignore_types=None):
         extra = _generate_extra_properties(graph[type_id], ignore)
         
         name = graph[type_id]["name"]["value"]
-        included = [_convert_name_to_new(included_type["id"], origin_id, new_location_id, only_include) for included_type in graph[type_id]["/freebase/type_hints/included_types"]]
+        included = [_convert_name_to_new(included_type["id"], origin_id, new_location_id, only_include)
+                    for included_type in graph[type_id]["/freebase/type_hints/included_types"]]
         cvt = graph[type_id]["/freebase/type_hints/mediator"]
         
         create_type(s, name, key, new_location_id, included=included, cvt=cvt, tip=tip, extra=extra)

@@ -251,6 +251,7 @@ class HTTPMetawebSession(MetawebSession):
         if cookiefile is None or cookiefile == '':
             if os.environ.has_key('HOME'):
                 cookiefile = os.path.join(os.environ['HOME'], '.pyfreebase/cookiejar')
+
             else:
                 raise MetawebError("no cookiefile specified and no $HOME/.pyfreebase directory" % cookiefile)
         
