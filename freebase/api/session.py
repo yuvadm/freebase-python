@@ -39,7 +39,7 @@ declarations for external metaweb api.
 
 
 __all__ = ['MetawebError', 'MetawebSession', 'HTTPMetawebSession', 'attrdict']
-__version__ = '1.0.3'
+__version__ = '1.0.4'
 
 import os, sys, re
 import cookielib
