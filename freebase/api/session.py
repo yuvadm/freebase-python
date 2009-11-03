@@ -67,6 +67,37 @@ except ImportError:
                 raise Exception("unable to import neither json, simplejson, jsonlib2, or django.utils.simplejson")
 
 try:
+    # python 2.5 and higher
+    from functools import update_wrapper
+except ImportError:
+    # back-copied verbatim from python 2.6
+    WRAPPER_ASSIGNMENTS = ('__module__', '__name__', '__doc__')
+    WRAPPER_UPDATES = ('__dict__',)
+    def update_wrapper(wrapper,
+                       wrapped,
+                       assigned = WRAPPER_ASSIGNMENTS,
+                       updated = WRAPPER_UPDATES):
+        """Update a wrapper function to look like the wrapped function
+
+           wrapper is the function to be updated
+           wrapped is the original function
+           assigned is a tuple naming the attributes assigned directly
+           from the wrapped function to the wrapper function (defaults to
+           functools.WRAPPER_ASSIGNMENTS)
+           updated is a tuple naming the attributes of the wrapper that
+           are updated with the corresponding attribute from the wrapped
+           function (defaults to functools.WRAPPER_UPDATES)
+        """
+        for attr in assigned:
+            setattr(wrapper, attr, getattr(wrapped, attr))
+        for attr in updated:
+            getattr(wrapper, attr).update(getattr(wrapped, attr, {}))
+        # Return the wrapper so this can be used as a decorator via partial()
+        return wrapper
+
+
+    
+try:
     from urllib import quote as urlquote
 except ImportError:
     from urlib_stub import quote as urlquote
@@ -169,6 +200,26 @@ class attrdict(dict):
         dict.__init__(self, *args, **kwargs)
         self.__dict__ = self
 
+def maybe_dumps(s):
+    """
+    If the given value is a json structure, encode it as a json
+    string. Otherwise leave it as is.
+    """
+    if isinstance(s, (dict, list)):
+        return json.dumps(s)
+    return s
+
+def json_params(f):
+    """
+    Decorator that turns all arguments into string or
+    string-compatible objects by json-encoding all dicts and lists,
+    and leaving other types alone
+    """
+    def call_f(*args, **kwds):
+        new_args = (maybe_dumps(s) for s in args)
+        new_kwds = dict((k,maybe_dumps(v)) for k,v in kwds.iteritems())
+        return f(*new_args, **new_kwds)
+    return update_wrapper(call_f, f)
 
 
 # TODO expose the common parts of the result envelope
@@ -300,7 +351,7 @@ class HTTPMetawebSession(MetawebSession):
         if form is not None:
             qstr = '&'.join(['%s=%s' % (urlencode_weak(unicode(k).encode('utf-8')),
                                         urlencode_weak(unicode(v).encode('utf-8')))
-                             for k,v in form.items()])
+                             for k,v in form.iteritems()])
             if method == 'POST':
                 # put the args on the url if we're putting something else
                 # in the body.  this is used to add args to raw uploads.
@@ -451,16 +502,15 @@ class HTTPMetawebSession(MetawebSession):
         
         if r.code != '/api/status/ok':
             raise MetawebError(u'%s %r' % (r.get('code',''), r.messages)) #this should never happen
-    
+
+    @json_params
     def user_info(self, mql_output=None):
         """ get user_info. For a more complete description,
         see http://www.freebase.com/view/guid/9202a8c04000641f800000000c36a842"""
         
         service = "/api/service/user_info"
         
-        qstr = json.dumps(mql_output, separators=SEPARATORS)
-        
-        r = self._httpreq_json(service, 'POST', form=dict(mql_output=qstr))
+        r = self._httpreq_json(service, 'POST', form=dict(mql_output=mql_output))
         return r
     
     def loggedin(self):
@@ -754,7 +804,8 @@ class HTTPMetawebSession(MetawebSession):
         r = self._httpreq_json(service, 'POST', form=form)
         return self._mqlresult(r)
         
-    
+
+    @json_params
     def search(self, query, format=None, prefixed=None, limit=20, start=0,
                 type=None, type_strict="any", domain=None, domain_strict=None,
                 escape="html", timeout=None, mql_filter=None, mql_output=None):
@@ -795,10 +846,13 @@ class HTTPMetawebSession(MetawebSession):
         
         return self._mqlresult(r)
         
-    
-    def geosearch(self, location=None, location_type=None, mql_input=None, limit=20,
-                start=0, type=None, geometry_type=None, intersect=None, mql_filter=None,
-                within=None, inside=None, order_by=None, count=None, format="json", mql_output=None):
+
+    @json_params
+    def geosearch(self, location=None, location_type=None,
+                  mql_input=None, limit=20, start=0, type=None,
+                  geometry_type=None, intersect=None, mql_filter=None,
+                  within=None, inside=None, order_by=None, count=None,
+                  format="json", mql_output=None):
         """ perform a geosearch. For a more complete description,
         see http://www.freebase.com/api/service/geosearch?help """
         
