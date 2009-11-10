@@ -66,6 +66,8 @@ def expand_uri_template(template, args):
     return URITemplate(template).run(args)
 
 def _uri_encode_var(v):
+    if isinstance(v, unicode):
+        v = v.encode('utf-8')
     return urllib.quote(v, safe="-_.~!$&'()*+,;=:/?[]#@")
 
 
