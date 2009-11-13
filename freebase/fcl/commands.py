@@ -274,6 +274,36 @@ def cmd_cat(fb, id, include_headers=False):
     """
     return cmd_get(fb, id, localfile='-', include_headers=include_headers)
 
+def cmd_shell(fb):
+    import readline
+    def complete_cmd(text, state):
+        return ''
+    readline.set_completer(complete_cmd)
+#    readline.parse_and_bind('tab: complete')
+    graphs = {'http://trunk.qa.metaweb.com':'qa',
+              'http://branch.qa.metaweb.com':'qa',
+              'http://www.freebase.com':'otg',
+              'http://api.freebase.com':'otg',
+              'http://freebase.com':'otg',
+              'http://www.sandbox-freebase.com':'sandbox',
+              'http://api.sandbox-freebase.com':'sandbox',
+              'http://sandbox-freebase.com':'sandbox'
+              }
+
+    gname = graphs.get(fb.mss.service_url, 'unknown')
+    while True:
+        try:
+            line = raw_input((fb.mss.username+'@' if fb.mss.username else '') +gname+': '+fb.pwd+' > ')
+        except EOFError:
+            print
+            break
+
+        if line:
+            args = line.split()
+            cmd = args.pop(0)
+            if cmd in fb.commands:
+                fb.dispatch(fb.commands[cmd], args, {});
+        
 def cmd_get(fb, id, localfile=None, include_headers=False):
     """download a file from freebase
     %prog get id [localfile]
