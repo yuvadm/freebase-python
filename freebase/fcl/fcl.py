@@ -48,9 +48,9 @@ log.addHandler(console)
 
 from freebase.api import HTTPMetawebSession, MetawebError, attrdict
 
-_cookiedir = None
+_configdir = None
 if os.environ.has_key('HOME'):
-    _cookiedir = os.path.join(os.environ['HOME'], '.pyfreebase')
+    _configdir = os.path.join(os.environ['HOME'], '.pyfreebase')
 
 class Command(object):
     def __init__(self, module, name, func):
@@ -77,16 +77,18 @@ class FclCommandHandler(object):
     def __init__(self):
         self.service_host = 'www.freebase.com'
         self.cookiejar = None
-        self.cwid = ''
+        self.pwd = '/'
         self.progpath = 'fcl'
         self.commands = {}
         self.out = out
 
         self.cookiefile = None
-        if _cookiedir is not None:
-            self.cookiefile = os.path.join(_cookiedir, 'cookiejar')
+        self.pwdfile = None
+        if _configdir is not None:
+            self.cookiefile = os.path.join(_configdir, 'cookiejar')
+            self.pwdfile = os.path.join(_configdir, 'pwd')
 
-
+        
     def init(self):
         if self.cookiefile is not None:
             self.cookiejar = cookielib.LWPCookieJar(self.cookiefile)
@@ -96,7 +98,9 @@ class FclCommandHandler(object):
                 except cookielib.LoadError:
                     log.warn('error loading cookies')
 
-        #print 'start cookies %r' % self.cookiejar
+        if self.pwdfile is not None:
+            if os.path.exists(self.pwdfile):
+                self.pwd = file(self.pwdfile).read()
 
         self.mss = HTTPMetawebSession(self.service_host,
                                       cookiejar=self.cookiejar)
@@ -109,16 +113,16 @@ class FclCommandHandler(object):
         if path.startswith('/'):
             return path
 
-        if not isinstance(self.cwid, basestring) or not self.cwid.startswith('/'):
+        if not isinstance(self.pwd, basestring) or not self.pwd.startswith('/'):
             # svn cwid support is disabled because it relies on some svn glue that
             # was not sufficiently well thought out.
             # raise CmdException("can't resolve relative id %r without cwid - see 'fcl help pwid'" % (path))
             raise CmdException("no support for relative id %r" % (path))
 
         if path == '' or path == '.':
-            return self.cwid
+            return self.pwd
 
-        return self.cwid + '/' + path
+        return os.path.join(self.pwd, path)
 
 
     def absprop(self, propkey):
@@ -146,19 +150,20 @@ class FclCommandHandler(object):
 
     def save(self):
         #print 'end cookies %r' % self.cookiejar
-        if _cookiedir and self.cookiefile.startswith(_cookiedir):
-            # create private cookiedir if needed
-            if not os.path.exists(_cookiedir):
-                os.mkdir(_cookiedir, 0700)
-                os.chmod(_cookiedir, stat.S_IRWXU)
+        if _configdir and self.cookiefile.startswith(_configdir):
+            # create private _configdir if needed
+            if not os.path.exists(_configdir):
+                os.mkdir(_configdir, 0700)
+                os.chmod(_configdir, stat.S_IRWXU)
 
         if self.cookiejar is None:
             return
 
         self.cookiejar.save(ignore_discard=True)
 
-        # save the cwd and other state too
-
+        f = file(self.pwdfile, 'w')
+        f.write(self.pwd)
+        f.close()
 
     def import_commands(self, modname):
         """

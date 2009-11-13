@@ -259,6 +259,13 @@ def cmd_mv(fb, src, dst):
     cmd_ln(fb, src, dst)
     cmd_rm(fb, src)
 
+def cmd_cd(fb, path):
+    path = fb.absid(path)
+    fb.pwd = path
+
+def cmd_pwd(fb):
+    print fb.pwd
+
 def cmd_cat(fb, id, include_headers=False):
     """download a document from freebase to stdout
     %prog cat id
