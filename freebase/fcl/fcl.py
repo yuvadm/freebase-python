@@ -123,7 +123,7 @@ class FclCommandHandler(object):
             return self.pwd
 
         if path == '..':
-            return '/'.join(self.pwd.split('/')[:-1])
+            return '/'.join(self.pwd.split('/')[:-1]) or '/'
 
         return os.path.join(self.pwd, path)
 
