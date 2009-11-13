@@ -276,19 +276,23 @@ def cmd_cat(fb, id, include_headers=False):
 
 def cmd_shell(fb):
     import readline
+    import shlex
     def complete_cmd(text, state):
-        return ''
+        m = [ c for c in fb.commands if c.startswith(text) ]
+        return m[state]
+
     readline.set_completer(complete_cmd)
-#    readline.parse_and_bind('tab: complete')
-    graphs = {'http://trunk.qa.metaweb.com':'qa',
-              'http://branch.qa.metaweb.com':'qa',
-              'http://www.freebase.com':'otg',
-              'http://api.freebase.com':'otg',
-              'http://freebase.com':'otg',
-              'http://www.sandbox-freebase.com':'sandbox',
-              'http://api.sandbox-freebase.com':'sandbox',
-              'http://sandbox-freebase.com':'sandbox'
-              }
+    readline.parse_and_bind('tab: complete')
+    graphs = {
+        'http://trunk.qa.metaweb.com':'qa',
+        'http://branch.qa.metaweb.com':'qa',
+        'http://www.freebase.com':'otg',
+        'http://api.freebase.com':'otg',
+        'http://freebase.com':'otg',
+        'http://www.sandbox-freebase.com':'sandbox',
+        'http://api.sandbox-freebase.com':'sandbox',
+        'http://sandbox-freebase.com':'sandbox'
+    }
 
     gname = graphs.get(fb.mss.service_url, 'unknown')
     while True:
@@ -299,7 +303,7 @@ def cmd_shell(fb):
             break
 
         if line:
-            args = line.split()
+            args = shlex.split(line)
             cmd = args.pop(0)
             if cmd in fb.commands:
                 fb.dispatch(fb.commands[cmd], args, {});
