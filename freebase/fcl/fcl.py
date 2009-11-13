@@ -40,7 +40,6 @@ try:
 except ImportError:
     import json
 
-
 from cmdutil import CmdException, log, out
 from fbutil import FbException, default_propkeys
 
@@ -52,8 +51,6 @@ from freebase.api import HTTPMetawebSession, MetawebError, attrdict
 _cookiedir = None
 if os.environ.has_key('HOME'):
     _cookiedir = os.path.join(os.environ['HOME'], '.pyfreebase')
-
-
 
 class Command(object):
     def __init__(self, module, name, func):
@@ -83,6 +80,7 @@ class FclCommandHandler(object):
         self.cwid = ''
         self.progpath = 'fcl'
         self.commands = {}
+        self.out = out
 
         self.cookiefile = None
         if _cookiedir is not None:

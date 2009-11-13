@@ -172,13 +172,13 @@ def cmd_ls(fb, path=None, long=False, timesort=False, revsort=False):
     #sys.stdout.write(' '.join([mk.value for mk in r['/type/namespace/keys']]))
 
     for mk in r['/type/namespace/keys']:
-        if (long):
+        if long:
             # trim off the /user/
             creator = re.sub('^/user/', '', mk.link.creator)
             timestamp = mk.link.timestamp
-            out(mk.value, creator, timestamp)
+            fb.out(mk.value, creator, timestamp)
         else:
-            out(mk.value)
+            fb.out(mk.value)
 
     if 0:
         suffix = ''
@@ -435,7 +435,7 @@ def cmd_dump(fb, id):
             else:
                 extra = ''
 
-            out(k, id, name, type, extra)
+            fb.out(k, id, name, type, extra)
                     
 
 def cmd_pget(fb, id, propid):
@@ -642,7 +642,7 @@ def cmd_find(fb, qstr):
 
     results = fb.mss.mqlreaditer(q)
     for r in results:
-        out(r.id)
+        fb.out(r.id)
 
 
 def cmd_q(fb, qstr):
