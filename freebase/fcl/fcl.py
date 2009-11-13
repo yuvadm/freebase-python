@@ -119,13 +119,27 @@ class FclCommandHandler(object):
             # raise CmdException("can't resolve relative id %r without cwid - see 'fcl help pwid'" % (path))
             raise CmdException("no support for relative id %r" % (path))
 
-        if path == '' or path == '.':
+        if path == '':
             return self.pwd
 
-        if path == '..':
-            return '/'.join(self.pwd.split('/')[:-1]) or '/'
 
-        return os.path.join(self.pwd, path)
+        if self.pwd == '/':
+            full = ['']
+        else:
+            full = self.pwd.split('/')
+
+        for a in path.split('/'):
+            if a == '.' or '':
+                continue
+            if a == '..':
+                full.pop()
+                continue
+
+            full.append(a)
+
+        path = '/'.join(full)
+
+        return path or '/'
 
 
     def absprop(self, propkey):
