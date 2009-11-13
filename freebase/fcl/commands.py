@@ -307,6 +307,8 @@ def cmd_shell(fb):
             cmd = args.pop(0)
             if cmd in fb.commands:
                 fb.dispatch(fb.commands[cmd], args, {});
+            else:
+                print >>sys.stderr, "No such command: "+cmd
         
 def cmd_get(fb, id, localfile=None, include_headers=False):
     """download a file from freebase
