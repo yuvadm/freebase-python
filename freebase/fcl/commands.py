@@ -188,7 +188,7 @@ def cmd_ls(fb, path=None, long=False, timesort=False, revsort=False):
         print mk.value, mk.namespace.id+suffix
 
 
-
+@complete('path')
 def cmd_mkdir(fb, path):
     """create a new freebase namespace
     %prog mkdir id
@@ -213,6 +213,7 @@ def cmd_mkdir(fb, path):
 
     r = fb.mss.mqlwrite(wq)
 
+@complete('path', 'path')
 def cmd_ln(fb, src, dst):
     """create a namespace key
     %prog ln srcid dstid
@@ -277,9 +278,51 @@ def cmd_cat(fb, id, include_headers=False):
 def cmd_shell(fb):
     import readline
     import shlex
+    cache = {}
     def complete_cmd(text, state):
-        m = [ c for c in fb.commands if c.startswith(text) ]
-        return m[state]
+        def complete_path(t, i):
+            if t == '':
+                pwd = fb.pwd
+                k = 'value'
+                v = None
+            elif t.startswith('/'):
+                p = t.split('/')
+                k = 'value~='
+                v = '^'+p.pop()+'.*'
+                pwd = '/'.join(p)
+            else:
+                pwd = fb.pwd
+                k = 'value~='
+                v = '^'+t+'.*'
+
+            ckey = '%s:%s' % (k,v)
+            if ckey in cache:
+                r = cache[ckey]
+            else:
+                q = {'id': pwd,
+                     '/type/namespace/keys': [{k:v, 'value':None}]
+                     }
+                r = fb.mss.mqlread(q)
+                cache[ckey] = r
+
+            return r['/type/namespace/keys'][i]['value']
+
+        completes = {'path':complete_path}
+        lb = readline.get_line_buffer()
+        if lb == text:
+            m = [ c for c in fb.commands if c.startswith(text) ]
+            return m[state]
+        else:
+            args = lb.split()
+            cmd = args.pop(0)
+            la = len(args)-1
+            if la == -1:
+                la = 0
+
+            types = fb.commands[cmd].func.types
+            t = types[la]
+            return completes.get(t, lambda x,y: None)(text, state)
+
 
     readline.set_completer(complete_cmd)
     readline.parse_and_bind('tab: complete')

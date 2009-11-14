@@ -55,6 +55,11 @@ def option(argname, *args, **kws):
     return decorate
 
 
+def complete(*types):
+    def decorate(f):
+        f.types = types
+        return f
+    return decorate
 
 class TableOut(object):
     def __init__(self):
