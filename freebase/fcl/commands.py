@@ -249,6 +249,7 @@ def cmd_rm(fb, path):
 
     return disconnect_object(fb.mss, path)
 
+@complete('path', 'path')
 def cmd_mv(fb, src, dst):
     """rename srcid to dstid.
     %prog mv srcid dstid
@@ -594,6 +595,7 @@ def cmd_touch(fb):
     fb.mss.mqlflush()
 
 
+@complete('path', 'path', None)
 def cmd_pset(fb, id, propkey, val, oldval=None, extra=None):
     """set a property of a freebase object  -- EXPERIMENTAL
     %prog pset object_id property_id value
