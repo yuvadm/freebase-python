@@ -764,7 +764,8 @@ def cmd_open(fb, id):
     
     %prog open /some/id
     """
-    os.system("open 'http://www.freebase.com/view%s'" % id)
+    path = fb.absid(id)
+    os.system("open 'http://%s/view%s'" % (fb.service_host, path))
 
 
 def cmd_log(fb, id):
