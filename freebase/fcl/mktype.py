@@ -44,7 +44,7 @@ def cmd_mkobj(fb, id, typeid='/common/topic', name=''):
     """
     id = fb.absid(id)
     
-    return create_object(fb.mss, name="", path=id, 
+    return create_object(fb.mss, name=name, path=id, 
                         included_types=typeid, create="unless_exists")
                 
 def cmd_mktype(fb, id, name=''):
