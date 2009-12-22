@@ -179,8 +179,10 @@ def makev(v):
 
     if isinstance(v, bool):
         v = unicode(v).lower()
+    elif isinstance(v, unicode):
+        v = v.encode('utf-8')
     else:
-        v = unicode(v)
+        v = str(v)
 
     return urlencode_weak(v)
 
@@ -369,8 +371,8 @@ class HTTPMetawebSession(MetawebSession):
             assert ct is not None
         
         if form is not None:
-            qstr = '&'.join(['%s=%s' % (makev(k).encode('utf-8'),
-                                        makev(v).encode('utf-8'))
+            qstr = '&'.join(['%s=%s' % (makev(k),
+                                        makev(v))
                              for k,v in form.iteritems()])
             if method == 'POST':
                 # put the args on the url if we're putting something else
@@ -499,7 +501,8 @@ class HTTPMetawebSession(MetawebSession):
         rememberme = rememberme and "true" or "false"
         form_params = {"username": username,
                        "password": password }
-        form_params['domain'] = '%s' % self._base_url
+        domain = self._base_url.split(":")[0]
+        form_params['domain'] = '%s' % domain
         if rememberme:
             form_params["rememberme"] = "true"
         r = self._httpreq_json(service, 'POST',
@@ -530,8 +533,10 @@ class HTTPMetawebSession(MetawebSession):
         see http://www.freebase.com/view/guid/9202a8c04000641f800000000c36a842"""
         
         service = "/api/service/user_info"
-        
-        r = self._httpreq_json(service, 'POST', form=dict(mql_output=mql_output))
+        form = {}
+        if mql_output is not None:
+            form['mql_output'] = mql_output
+        r = self._httpreq_json(service, 'POST', form=form)
         return r
     
     def loggedin(self):
