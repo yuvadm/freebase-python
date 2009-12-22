@@ -64,16 +64,27 @@ for k,vs in media_types.items():
         media_type_to_extension[v] = k
 
 
-
-
-DIRSPLIT = re.compile(r'^(.+)/([^/]+)$')
-
 def dirsplit_unsafe(id):
-    m = DIRSPLIT.match(id)
-    if m is None:
-        return (None, id)
-    dir,file = m.groups()
-    return (dir,file)
+    """
+    Split a freebase id into a prefix and a tail, dealing with
+    trailing slashes, etc.
+    
+    '/abc'       -> '/', 'abc'
+    '/foo/bar'   -> '/foo', 'bar'
+    'foo/bar'    -> 'foo', 'bar'
+    'foo/bar/'   -> 'foo', 'bar'
+    """
+    id = id.rstrip('/')
+    parts = id.rsplit("/", 1)
+
+    # if no "/" like "foo", then this comes back as ["foo"]
+    if len(parts) == 1:
+        return None, parts[0]
+
+    if not parts[0]:
+        return '/', parts[1]
+
+    return parts
 
 def dirsplit(id):
     dir,file = dirsplit_unsafe(id)
