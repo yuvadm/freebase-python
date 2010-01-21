@@ -721,7 +721,7 @@ def cmd_find(fb, qstr):
     %prog find
     """
     if qstr.startswith('{'):
-        q = simplejson.loads(qstr)
+        q = json.loads(qstr)
     else:
         q = rison.loads('(' + qstr + ')')
 
@@ -744,7 +744,7 @@ def cmd_q(fb, qstr):
     %prog q
     """
     if qstr.startswith('{'):
-        q = simplejson.loads(qstr)
+        q = json.loads(qstr)
     else:
         q = rison.loads('(' + qstr + ')')
 
@@ -756,7 +756,7 @@ def cmd_q(fb, qstr):
             print '[',
         else:
             print ',',
-        print simplejson.dumps(result, indent=2),
+        print json.dumps(result, indent=2),
     print ']'
 
 def cmd_open(fb, id):
@@ -809,11 +809,11 @@ def cmd_log(fb, id):
 
     for link in linksfrom:
         # fb.trow(link.master_property.id, ...)
-        print simplejson.dumps(link, indent=2)
+        print json.dumps(link, indent=2)
 
     for link in valuesfrom:
         # fb.trow(link.master_property.id, ...)
-        print simplejson.dumps(link, indent=2)
+        print json.dumps(link, indent=2)
 
     
 
