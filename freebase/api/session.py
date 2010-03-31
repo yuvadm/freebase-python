@@ -1012,7 +1012,7 @@ class HTTPMetawebSession(MetawebSession):
     def move_app(self, appid, to_appid):
         service = '/appeditor/move_app'
 
-        form = {'appid':appid, 'to_appid':to}
+        form = {'appid':appid, 'to_appid':to_appid}
 
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         
