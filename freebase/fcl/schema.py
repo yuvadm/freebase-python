@@ -19,7 +19,7 @@ def cmd_dump_base(fb, baseid):
     """
     print >> sys.stdout, json.dumps(dump_base(fb.mss, baseid), indent=2)
 
-def cmd_dump_type(fb, baseid, follow_types=True):
+def cmd_dump_type(fb, typeid, follow_types=True):
     """dump a type to stdout
     %prog dump_type typeid [follow_types=True]
 

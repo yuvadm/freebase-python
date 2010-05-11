@@ -505,11 +505,9 @@ def restore(s, graph, new_location, ignore_types=None):
     # make sure we're starting fresh - sometimes your mwLastWriteTime
     # isn't fresh if create_private_domain fails
     s.touch()
-    origin_id, new_location_id = s.mqlreadmulti([{"id" : types_to_create[0],
-                                                  "type" : "/type/type",
-                                                  "domain" : {"id" : None}},
-                                                 {"id" : new_location,
-                                                  "a:id" : None}])
+    origin_id = graph[types_to_create[0]]["domain"]["id"]
+    new_location_id = s.mqlread({"id" : new_location,
+                                 "a:id" : None})
 
     if new_location_id is None:
         # create the domain if it doesnt' exist already
@@ -525,8 +523,7 @@ def restore(s, graph, new_location, ignore_types=None):
             sys.stderr.write("%s does not exist: can only create domains as direct children of %s\n" % (new_location, user_id))
             sys.exit(1)
         s.create_private_domain(location_key, location_key)
-    
-    origin_id = origin_id["domain"]["id"]
+
     new_location_id = new_location_id["a:id"]
     
     only_include = types_to_create + props_to_create
@@ -621,7 +618,7 @@ def _get_graph(s, initial_types, follow_types):
             # ugly things happen (we can't include the cvt because the cvt won't link to us.)
             for prop in graph[new]["properties"]:
                 if prop["master_property"]:
-                    raise CVTError("You can't set follow_types to False if there's a cvt. A cvt requires you get all the relevant types. Set follow_types to true.\n" + \
+                    raise CVTError("You can't set follow_types to False if there is a reverse proper a cvt. A cvt requires you get all the relevant types. Set follow_types to true.\n" + \
                                     "The offending property was %s, whose master was %s." % (prop["id"], prop["master_property"]))
     
     graph["__follow_types"] = follow_types
