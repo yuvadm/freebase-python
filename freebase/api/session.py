@@ -574,7 +574,7 @@ class HTTPMetawebSession(MetawebSession):
         
         return self._httpreq_json(service, 'POST', form=form)
     
-    def mqlreaditer(self, sq, asof=None):
+    def mqlreaditer(self, sq, asof=None, headers=None):
         """read a structure query."""
         
         cursor = True
@@ -592,7 +592,7 @@ class HTTPMetawebSession(MetawebSession):
             
             qstr = json.dumps(subq, separators=SEPARATORS)
                         
-            r = self._httpreq_json(service, 'POST', form=dict(query=qstr))
+            r = self._httpreq_json(service, 'POST', form=dict(query=qstr), headers=headers)
             
             for item in self._mqlresult(r):
                 yield item
@@ -603,7 +603,7 @@ class HTTPMetawebSession(MetawebSession):
             else:
                 return
     
-    def mqlread(self, sq, asof=None):
+    def mqlread(self, sq, asof=None, headers=None):
         """read a structure query. For a more complete description,
         see http://www.freebase.com/view/en/api_service_mqlread"""
         subq = dict(query=sq, escape=False)
@@ -620,11 +620,11 @@ class HTTPMetawebSession(MetawebSession):
                       Delayed(logformat, sq))
         
         qstr = json.dumps(subq, separators=SEPARATORS)
-        r = self._httpreq_json(service, 'POST', form=dict(query=qstr))
+        r = self._httpreq_json(service, 'POST', form=dict(query=qstr), headers=headers)
         
         return self._mqlresult(r)
     
-    def mqlreadmulti(self, queries, asof=None):
+    def mqlreadmulti(self, queries, asof=None, headers=None):
         """read a structure query"""
         keys = [('q%d' % i) for i,v in enumerate(queries)];
         envelope = {}
@@ -645,7 +645,7 @@ class HTTPMetawebSession(MetawebSession):
                       Delayed(logformat, envelope))
         
         qstr = json.dumps(envelope, separators=SEPARATORS)
-        rs = self._httpreq_json(service, 'POST', form=dict(queries=qstr))
+        rs = self._httpreq_json(service, 'POST', form=dict(queries=qstr), headers=headers)
         
         self.log.info('%s result: %s',
                       service,
