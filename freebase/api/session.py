@@ -574,7 +574,7 @@ class HTTPMetawebSession(MetawebSession):
         
         return self._httpreq_json(service, 'POST', form=form)
     
-    def mqlreaditer(self, sq, asof=None, headers=None):
+    def mqlreaditer(self, sq, asof=None, headers=None, escape=False, **envelope):
         """read a structure query."""
         
         cursor = True
@@ -586,7 +586,8 @@ class HTTPMetawebSession(MetawebSession):
             sq = sq[0]
         
         while 1:
-            subq = dict(query=[sq], cursor=cursor, escape=False)
+            subq = envelope.copy()
+            subq.update(query=[sq], cursor=cursor, escape=escape)
             if asof:
                 subq['as_of_time'] = asof
             
@@ -603,33 +604,38 @@ class HTTPMetawebSession(MetawebSession):
             else:
                 return
     
-    def mqlread(self, sq, asof=None, headers=None):
+    def mqlread(self, sq, asof=None, headers=None, escape=False, **envelope):
         """read a structure query. For a more complete description,
         see http://www.freebase.com/view/en/api_service_mqlread"""
-        subq = dict(query=sq, escape=False)
+        subq = envelope.copy()
+        subq.update(query=sq, escape=escape)
         if asof:
             subq['as_of_time'] = asof
         
         if isinstance(sq, list):
             subq['cursor'] = True
+
         
         service = '/api/service/mqlread'
-        
+
         self.log.info('%s: %s',
                       service,
                       Delayed(logformat, sq))
         
         qstr = json.dumps(subq, separators=SEPARATORS)
+        print "sending %s" % qstr
         r = self._httpreq_json(service, 'POST', form=dict(query=qstr), headers=headers)
         
         return self._mqlresult(r)
     
-    def mqlreadmulti(self, queries, asof=None, headers=None):
+    def mqlreadmulti(self, queries, asof=None, headers=None,
+                     escape=False, **envelope):
         """read a structure query"""
         keys = [('q%d' % i) for i,v in enumerate(queries)];
         envelope = {}
         for i,sq in enumerate(queries):
-            subq = dict(query=sq, escape=False)
+            subq = envelope.copy()
+            subq.update(query=sq, escape=escape)
             if asof:
                 subq['as_of_time'] = asof
             
@@ -718,13 +724,12 @@ class HTTPMetawebSession(MetawebSession):
         
         return body
     
-    def mqlwrite(self, sq, use_permission_of=None, attribution_id=None):
+    def mqlwrite(self, sq, attribution_id=None, **envelope):
         """do a mql write. For a more complete description,
         see http://www.freebase.com/view/en/api_service_mqlwrite"""
-        query = dict(query=sq, escape=False)
-        if use_permission_of:
-            query['use_permission_of'] = use_permission_of
-        if attribution_id:
+        query = envelope.copy()
+        query.update(query=sq, escape=False)
+        if attribution_id:              # strange badly named api
             query['attribution'] = attribution_id
 
         qstr = json.dumps(query, separators=SEPARATORS)
@@ -743,11 +748,12 @@ class HTTPMetawebSession(MetawebSession):
         self.log.debug('MQLWRITE RESP: %r', r)
         return self._mqlresult(r)
     
-    def mqlcheck(self, sq):
+    def mqlcheck(self, sq, escape=False, **envelope):
         """ See if a write is valid, and see what would happen, but do not
         actually do the write """
         
-        query = dict(query=sq, escape=False)
+        query = envelope.copy()
+        query.update(query=sq, escape=escape)
         qstr = json.dumps(query, separators=SEPARATORS)
         
         self.log.debug('MQLCHECK: %s', qstr)
