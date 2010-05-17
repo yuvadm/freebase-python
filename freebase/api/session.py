@@ -1056,6 +1056,15 @@ class HTTPMetawebSession(MetawebSession):
         
         return self._mqlresult(r)
 
+    def delete_app_all_files(self, appid):
+        service = '/appeditor/delete_app_all_files'
+
+        form = {'appid':appid}
+
+        r = self._httpreq_json(service, 'POST', form=form, service='acre')
+
+        return self._mqlresult(r)
+
     # OK
     def get_app_history(self, appid, limit):
         service = '/appeditor/get_app_history'
