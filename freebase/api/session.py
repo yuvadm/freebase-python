@@ -272,7 +272,7 @@ class HTTPMetawebSession(MetawebSession):
     #  see each other's writes immediately.
     _default_cookiejar = cookielib.CookieJar()
     
-    def __init__(self, service_url, username=None, password=None, prev_session=None, cookiejar=None, cookiefile=None, application_name=None, appeditor_service_url=None):
+    def __init__(self, service_url, username=None, password=None, prev_session=None, cookiejar=None, cookiefile=None, application_name=None, acre_service_url=None):
         """
         create a new MetawebSession for interacting with the Metaweb.
         
@@ -291,10 +291,10 @@ class HTTPMetawebSession(MetawebSession):
 
         if service_url[7:].startswith('www') or service_url[7:].startswith('api'):
             self._base_url = service_url[11:]
-            self.acre_service_url = "http://acre.%s" % service_url[11:]
         else:
             self._base_url  = service_url[7:]
-            self.acre_service_url = "http://acre.%s" % service_url[7:]
+
+        self.acre_service_url = acre_service_url or "http://acre.%s" % self._base_url
 
         self.username = username
         self.password = password
