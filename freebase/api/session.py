@@ -473,7 +473,7 @@ class HTTPMetawebSession(MetawebSession):
         if r.code != '/api/status/ok':
             for msg in r.messages:
                 self.log.error('mql error: %s %s %r' % (msg.code, msg.message, msg.get('query', None)))
-            raise MetawebError, 'query failed: %s\n%s\n%s' % (r.messages[0].code, r.messages[0].message, json.dumps(r.messages[0].get('query', None), indent=2))
+            raise MetawebError, 'query failed: %s %s\n%s\n%s' % (r.transaction_id, r.messages[0].code, r.messages[0].message, json.dumps(r.messages[0].get('query', None), indent=2))
     
     def _mqlresult(self, r):
         self._check_mqlerror(r)
