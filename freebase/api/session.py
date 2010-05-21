@@ -434,7 +434,7 @@ class HTTPMetawebSession(MetawebSession):
         if str(status) == '400' and is_jsbody:
             r = self._loadjson(body)
             msg = r.messages[0]
-            raise MetawebError(u'%s %s %r' % (msg.get('code',''), msg.message, msg.info))
+            raise MetawebError(u'TID: %s %s %s %r' % (r.get('transaction_id', ''), msg.get('code',''), msg.message, msg.info))
         
         raise MetawebError, 'request failed: %s: %s\n%s' % (url, status, body)
     
