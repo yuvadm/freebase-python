@@ -983,13 +983,15 @@ class HTTPMetawebSession(MetawebSession):
         return self._mqlresult(r)
 
     # OK
-    def create_app(self, appid, name=None, clone=None):
+    def create_app(self, appid, name=None, clone=None, extra_group=None):
         service = '/appeditor/create_app'
         form = {'appid':appid}
         if name:
             form['name'] = name
         if clone:
             form['clone'] = clone
+        if extra_group:
+            form['extra_group'] = extra_group
 
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
 
