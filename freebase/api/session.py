@@ -486,7 +486,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def login(self, username=None, password=None, rememberme=False):
         """sign in to the service. For a more complete description,
-        see http://www.freebase.com/view/en/api_account_login"""
+        see http://www.freebase.com/docs/web_services/login"""
         
         service = '/api/account/login'
         
@@ -516,7 +516,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def logout(self):
         """logout of the service. For a more complete description,
-        see http://www.freebase.com/view/en/api_account_logout"""
+        see http://www.freebase.com/docs/web_services/logout"""
         
         service = '/api/account/logout'
         
@@ -530,7 +530,7 @@ class HTTPMetawebSession(MetawebSession):
     @json_params
     def user_info(self, mql_output=None):
         """ get user_info. For a more complete description,
-        see http://www.freebase.com/view/guid/9202a8c04000641f800000000c36a842"""
+        see http://www.freebase.com/docs/web_services/user_info"""
         
         service = "/api/service/user_info"
         form = {}
@@ -554,7 +554,7 @@ class HTTPMetawebSession(MetawebSession):
 
     def create_private_domain(self, domain_key, display_name):
         """ create a private domain. For a more complete description,
-        see http://www.freebase.com/edit/topic/en/api_service_create_private_domain"""
+        see http://www.freebase.com/docs/web_services/create_private_domain"""
         
         service = "/api/service/create_private_domain"
         
@@ -566,7 +566,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def delete_private_domain(self, domain_key):
         """ create a private domain. For a more complete description,
-        see http://www.freebase.com/edit/topic/en/api_service_delete_private_domain"""
+        see http://www.freebase.com/docs/web_services/delete_private_domain"""
         
         service = "/api/service/delete_private_domain"
         
@@ -606,7 +606,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def mqlread(self, sq, asof=None, headers=None, escape=False, **envelope):
         """read a structure query. For a more complete description,
-        see http://www.freebase.com/view/en/api_service_mqlread"""
+        see http://www.freebase.com/docs/web_services/mqlread"""
         subq = envelope.copy()
         subq.update(query=sq, escape=escape)
         if asof:
@@ -661,12 +661,12 @@ class HTTPMetawebSession(MetawebSession):
     
     def trans(self, guid):
         """translate blob from id. Identical to `raw`. For more
-        information, see http://www.freebase.com/view/en/api_trans_raw"""
+        information, see http://www.freebase.com/docs/web_services/trans_raw"""
         return self.raw(guid)
     
     def raw(self, id):
         """translate blob from id. For a more complete description,
-        see http://www.freebase.com/view/en/api_trans_raw"""
+        see http://www.freebase.com/docs/web_services/trans_raw"""
         url = '/api/trans/raw' + urlquote(id)
         
         self.log.info(url)
@@ -679,7 +679,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def blurb(self, id, break_paragraphs=False, maxlength=200):
         """translate only the text in blob from id. For a more
-        complete description, see http://www.freebase.com/view/en/api_trans_blurb"""
+        complete description, see http://www.freebase.com/docs/web_services/trans_blurb"""
         url = '/api/trans/blurb' + urlquote(id)
         
         self.log.info(url)
@@ -706,7 +706,7 @@ class HTTPMetawebSession(MetawebSession):
     def image_thumb(self, id, maxwidth=None, maxheight=None, mode="fit", onfail=None):
         """ given the id of an image, this will return a URL of a thumbnail of the image.
         The full details of how the image is cropped and finessed is detailed at
-        http://www.freebase.com/view/en/api_trans_image_thumb """
+        http://www.freebase.com/docs/web_services/image_thumb"""
         
         service = "/api/trans/image_thumb"
         assert mode in ["fit", "fill", "fillcrop", "fillcropmid"]
@@ -726,7 +726,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def mqlwrite(self, sq, attribution_id=None, **envelope):
         """do a mql write. For a more complete description,
-        see http://www.freebase.com/view/en/api_service_mqlwrite"""
+        see http://www.freebase.com/docs/web_services/mqlwrite"""
         query = envelope.copy()
         query.update(query=sq, escape=False)
         if attribution_id:              # strange badly named api
@@ -784,13 +784,13 @@ class HTTPMetawebSession(MetawebSession):
     
     def touch(self):
         """ make sure you are accessing the most recent data. For a more
-        complete description, see http://www.freebase.com/view/en/api_service_touch"""
+        complete description, see http://www.freebase.com/docs/web_services/touch"""
         return self.mqlflush()
 
     
     def upload(self, body, content_type, document_id=False, permission_of=False):
         """upload to the metaweb. For a more complete description,
-        see http://www.freebase.com/view/en/api_service_upload"""
+        see http://www.freebase.com/docs/web_services/upload"""
         
         service = '/api/service/upload'
         
@@ -823,7 +823,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def uri_submit(self, URI, document=None, content_type=None):
         """ submit a URI to freebase. For a more complete description,
-        see http://www.freebase.com/edit/topic/en/api_service_uri_submit """
+        see http://www.freebase.com/docs/web_services/uri_submit"""
         
         service = "/api/service/uri_submit"
         
@@ -842,7 +842,7 @@ class HTTPMetawebSession(MetawebSession):
                 type=None, type_strict="any", domain=None, domain_strict=None,
                 escape="html", timeout=None, mql_filter=None, mql_output=None):
         """ search freebase.com. For a more complete description,
-        see http://www.freebase.com/view/en/api_service_search"""
+        see http://www.freebase.com/docs/web_services/search"""
         
         service = "/api/service/search"
         
@@ -935,7 +935,7 @@ class HTTPMetawebSession(MetawebSession):
     
     def version(self):
         """ get versions for various parts of freebase. For a more
-        complete description, see http://www.freebase.com/view/en/api_version"""
+        complete description, see http://www.freebase.com/docs/web_services/version"""
         
         service = "/api/version"
         r = self._httpreq_json(service)
@@ -944,7 +944,7 @@ class HTTPMetawebSession(MetawebSession):
 
     def status(self):
        """ get the status for various parts of freebase. For a more
-       complete description, see http://www.freebase.com/view/en/api_status """
+       complete description, see http://www.freebase.com/docs/web_services/status"""
        
        service = "/api/status"
        r = self._httpreq_json(service)
