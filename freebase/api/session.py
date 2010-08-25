@@ -623,7 +623,6 @@ class HTTPMetawebSession(MetawebSession):
                       Delayed(logformat, sq))
         
         qstr = json.dumps(subq, separators=SEPARATORS)
-        print "sending %s" % qstr
         r = self._httpreq_json(service, 'POST', form=dict(query=qstr), headers=headers)
         
         return self._mqlresult(r)
