@@ -971,7 +971,7 @@ class HTTPMetawebSession(MetawebSession):
     ### Apps Specific Services
     # OK
     def list_user_apps(self, include_filenames=None):
-        service = '/appeditor/list_user_apps'
+        service = '/appeditor/services/list_user_apps'
 
         form = {}
         if include_filenames is not None:
@@ -983,7 +983,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def create_app(self, appid, name=None, clone=None, extra_group=None):
-        service = '/appeditor/create_app'
+        service = '/appeditor/services/create_app'
         form = {'appid':appid}
         if name:
             form['name'] = name
@@ -998,7 +998,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def delete_app(self, appid):
-        service = '/appeditor/delete_app'
+        service = '/appeditor/services/delete_app'
         form = {'appid':appid}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
@@ -1007,7 +1007,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def get_app(self, appid):
-        service = '/appeditor/get_app'
+        service = '/appeditor/services/get_app'
 
         form = {'appid':appid}
 
@@ -1017,7 +1017,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def move_app(self, appid, to_appid):
-        service = '/appeditor/move_app'
+        service = '/appeditor/services/move_app'
 
         form = {'appid':appid, 'to_appid':to_appid}
 
@@ -1026,7 +1026,7 @@ class HTTPMetawebSession(MetawebSession):
         return self._mqlresult(r)
 
     def set_app_properties(self, appid, **properties):
-        service = '/appeditor/set_app_properties'
+        service = '/appeditor/services/set_app_properties'
         form = properties
         form['appid'] = appid
 
@@ -1036,7 +1036,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def create_app_file(self, appid, name, acre_handler=None, based_on=None):
-        service = '/appeditor/create_app_file'
+        service = '/appeditor/services/create_app_file'
         form = {'appid':appid, 'name':name}
         if acre_handler:
             form['acre_handler'] = acre_handler
@@ -1049,7 +1049,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def delete_app_file(self, appid, name):
-        service = '/appeditor/delete_app_file'
+        service = '/appeditor/services/delete_app_file'
 
         form = {'appid':appid, 'name':name}
 
@@ -1058,7 +1058,7 @@ class HTTPMetawebSession(MetawebSession):
         return self._mqlresult(r)
 
     def delete_app_all_files(self, appid):
-        service = '/appeditor/delete_app_all_files'
+        service = '/appeditor/services/delete_app_all_files'
 
         form = {'appid':appid}
 
@@ -1068,7 +1068,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def get_app_history(self, appid, limit):
-        service = '/appeditor/get_app_history'
+        service = '/appeditor/services/get_app_history'
 
         form = {'appid':appid, 'limit':limit}
 
@@ -1078,7 +1078,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def create_app_version(self, appid, version, timestamp=None, service_url=None):
-        service = '/appeditor/create_app_version'
+        service = '/appeditor/services/create_app_version'
 
         form = {'appid':appid, 'version':version}
         if timestamp:
@@ -1092,42 +1092,42 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def delete_app_version(self, appid, version):
-        service = '/appeditor/delete_app_version'
+        service = '/appeditor/services/delete_app_version'
         form = {'appid':appid, 'version':version}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def set_app_host(self, appid, host):
-        service = '/appeditor/set_app_host'
+        service = '/appeditor/services/set_app_host'
         form = {'appid':appid, 'host':host}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def set_app_release(self, appid, version):
-        service = '/appeditor/set_app_release'
+        service = '/appeditor/services/set_app_release'
         form = {'appid':appid, 'version':version}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def add_app_author(self, appid, username):
-        service = '/appeditor/add_app_author'
+        service = '/appeditor/services/add_app_author'
         form = {'appid':appid, 'username':username}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def remove_app_author(self, appid, username):
-        service = '/appeditor/remove_app_author'
+        service = '/appeditor/services/remove_app_author'
         form = {'appid':appid, 'username':username}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def set_app_oauth_enabled(self, appid, enable=None):
-        service = '/appeditor/set_app_oauth_enabled'
+        service = '/appeditor/services/set_app_oauth_enabled'
         form = {'appid':appid}
         if enable is not None:
             form['enable'] = enable
@@ -1136,7 +1136,7 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def set_app_writeuser(self, appid, enable=None):
-        service = '/appeditor/set_app_writeuser'
+        service = '/appeditor/services/set_app_writeuser'
         form = {'appid':appid}
         if enable is not None:
             form['enable'] = enable
@@ -1147,21 +1147,21 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def list_app_apikeys(self, appid):
-        service = '/appeditor/list_app_apikeys'
+        service = '/appeditor/services/list_app_apikeys'
         form = {'appid':appid}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def create_app_apikey(self, appid, name, token, secret):
-        service = '/appeditor/create_app_apikey'
+        service = '/appeditor/services/create_app_apikey'
         form = {'appid':appid, 'name':name, 'token':token, 'secret':secret}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def delete_app_apikey(self, appid, name):
-        service = '/appeditor/delete_app_apikey'
+        service = '/appeditor/services/delete_app_apikey'
         form = {'appid':appid, 'name':name}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
@@ -1170,14 +1170,14 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def get_file(self, fileid):
-        service = '/appeditor/get_file'
+        service = '/appeditor/services/get_file'
         form = {'fileid':fileid}
         r = self._httpreq_json(service, 'GET', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK 
     def rename_file(self, fileid, name):
-        service = '/appeditor/rename_file'
+        service = '/appeditor/services/rename_file'
         form = {'fileid':fileid, 'name':name}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
@@ -1185,7 +1185,7 @@ class HTTPMetawebSession(MetawebSession):
     # OK
     def save_text_file(self, fileid, text, acre_handler=None, content_type=None,
                        revision=None, based_on=None):
-        service = '/appeditor/save_text_file'
+        service = '/appeditor/services/save_text_file'
         form = {'fileid':fileid, 'text':text}
         if acre_handler:
             form['acre_handler'] = acre_handler
@@ -1211,7 +1211,7 @@ class HTTPMetawebSession(MetawebSession):
             body = '\r\n'.join(parts)
             return ('multipart/form-data; boundary=%s' % boundary, body)
 
-        service = '/appeditor/save_binary_file'
+        service = '/appeditor/services/save_binary_file'
         form = {'fileid':fileid}
 
         ct, body = make_multipart_body(fileid.split('/')[-1], f, content_type)
@@ -1227,14 +1227,14 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def get_file_history(self, fileid, limit):
-        service = '/appeditor/get_file_history'
+        service = '/appeditor/services/get_file_history'
         form = {'fileid':fileid, 'limit':limit}
         r = self._httpreq_json(service, 'GET', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def get_file_revision(self, fileid, revision):
-        service = '/appeditor/get_file_revision'
+        service = '/appeditor/services/get_file_revision'
         form = {'fileid':fileid, 'revision':revision}
         r = self._httpreq_json(service, 'GET', form=form, service='acre')
         return self._mqlresult(r)
@@ -1242,14 +1242,14 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def set_file_revision(self, fileid, revision):
-        service = '/appeditor/set_file_revision'
+        service = '/appeditor/services/set_file_revision'
         form = {'fileid':fileid, 'revision':revision}
         r = self._httpreq_json(service, 'POST', form=form, service='acre')
         return self._mqlresult(r)
 
     # OK
     def get_file_diff(self, revision1, revision2):
-        service ='/appeditor/get_file_diff'
+        service ='/appeditor/services/get_file_diff'
         form = {'revision1':revision1, 'revision2':revision2}
         r = self._httpreq_json(service, 'GET', form=form, service='acre')
         return self._mqlresult(r)
@@ -1258,13 +1258,13 @@ class HTTPMetawebSession(MetawebSession):
 
     # OK
     def init_store(self):
-        service = '/appeditor/init_store'
+        service = '/appeditor/services/init_store'
         r = self._httpreq_json(service, 'GET', service='acre')
         return self._mqlresult(r)
 
     # OK
     def check_host_availability(self, host):
-        service = '/appeditor/check_host_availability'
+        service = '/appeditor/services/check_host_availability'
         form = {'host':host}
         r = self._httpreq_json(service, 'GET', form=form, service='acre')
         return self._mqlresult(r)
