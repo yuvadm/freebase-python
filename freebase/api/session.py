@@ -840,53 +840,20 @@ class HTTPMetawebSession(MetawebSession):
         
 
     @json_params
-    def search(self, query, format=None, prefixed=None, limit=20, start=0,
-                type=None, type_strict="any", domain=None, domain_strict=None,
-                escape="html", timeout=None, mql_filter=None, mql_output=None):
+    def search(self, query, **kwargs):
         """ search freebase.com. For a more complete description,
         see http://www.freebase.com/docs/web_services/search"""
         
         service = "/api/service/search"
         
         form = dict(query=query)
+        form.update(kwargs)
         
-        if format:
-            form["format"] = format
-        if prefixed:
-            form["prefixed"] = prefixed
-        if limit:
-            form["limit"] = limit
-        if start:
-            form["start"] = start
-        if type:
-            form["type"] = type
-        if type_strict:
-            form["type_strict"] = type_strict
-        if domain:
-            form["domain"] = domain
-        if domain_strict:
-            form["domain_strict"] = domain_strict
-        if escape:
-            form["escape"] = escape
-        if timeout:
-            form["timeout"] = timeout
-        if mql_filter:
-            form["mql_filter"] = mql_filter
-        if mql_output:
-            form["mql_output"] = mql_output
-            
-        
-        r = self._httpreq_json(service, 'POST', form=form)
-        
-        return self._mqlresult(r)
+        return self._mqlresult(self._httpreq_json(service, 'POST', form=form))
         
 
     @json_params
-    def geosearch(self, location=None, location_type=None,
-                  mql_input=None, limit=20, start=0, type=None,
-                  geometry_type=None, intersect=None, mql_filter=None,
-                  within=None, inside=None, order_by=None, count=None,
-                  format="json", mql_output=None):
+    def geosearch(self,format="json",**kwargs):
         """ perform a geosearch. For a more complete description,
         see http://www.freebase.com/api/service/geosearch?help """
         
@@ -896,38 +863,8 @@ class HTTPMetawebSession(MetawebSession):
             raise Exception("You have to give it something to work with")
         
         form = dict()
-        
-        if location:
-        	form["location"] = location
-        if location_type:
-        	form["location_type"] = location_type
-        if mql_input:
-        	form["mql_input"] = mql_input
-        if limit:
-        	form["limit"] = limit
-        if start:
-        	form["start"] = start
-        if type:
-        	form["type"] = type
-        if geometry_type:
-        	form["geometry_type"] = geometry_type
-        if intersect:
-        	form["intersect"] = intersect
-        if mql_filter:
-        	form["mql_filter"] = mql_filter
-        if within:
-        	form["within"] = within
-        if inside:
-        	form["inside"] = inside
-        if order_by:
-        	form["order_by"] = order_by
-        if count:
-        	form["count"] = count
-        if format:
-        	form["format"] = format
-        if mql_output:
-        	form["mql_output"] = mql_output
-        
+        form.update(kwargs)
+               
         if format == "json":
             r = self._httpreq_json(service, 'POST', form=form)
         else:
