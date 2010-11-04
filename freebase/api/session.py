@@ -356,9 +356,6 @@ class HTTPMetawebSession(MetawebSession):
         else:
             url = self.acre_service_url + service_path
 
-        if 'sandbox-freebase' not in url:
-            url = url.replace('/appeditor/services', '/appeditor')
-    
         if headers is None:
             headers = {}
         else:
