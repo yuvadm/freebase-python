@@ -75,7 +75,7 @@ class Command(object):
 class FclCommandHandler(object):
 
     def __init__(self):
-        self.service_host = 'www.freebase.com'
+        self.service_host = 'api.freebase.com'
         self.cookiejar = None
         self.pwd = '/'
         self.progpath = 'fcl'
@@ -275,7 +275,7 @@ class FclCommandHandler(object):
         log.setLevel(loglevel)
 
         if options.use_sandbox:
-            self.service_host = 'sandbox-freebase.com'
+            self.service_host = 'api.sandbox-freebase.com'
         else:
             self.service_host = options.service_host
 

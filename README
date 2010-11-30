@@ -30,7 +30,7 @@ SYNOPSIS:
 	
 	from freebase import HTTPMetawebSession, MetawebError
 
-	mss = HTTPMetawebSession('www.freebase.com')
+	mss = HTTPMetawebSession('api.freebase.com')
 
 	query = {    'type':'/music/artist',
 	             'name':'Sting',

@@ -84,7 +84,7 @@ class Recents(webapp.RequestHandler):
 class Info(webapp.RequestHandler):
   def get(self):
     VIEW = "?id="
-    BASE = "http://www.freebase.com/api/trans/image_thumb"
+    BASE = "http://api.freebase.com/api/trans/image_thumb"
     OPTIONS = "?maxheight=300"
     
     id = cgi.escape(self.request.get('id'))

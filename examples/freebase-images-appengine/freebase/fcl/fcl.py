@@ -69,7 +69,7 @@ class Command(object):
 class FbCommandHandler(object):
 
     def __init__(self):
-        self.service_host = 'www.freebase.com'
+        self.service_host = 'api.freebase.com'
         self.cookiejar = None
         self.cwid = ''
         self.progpath = 'fcl'

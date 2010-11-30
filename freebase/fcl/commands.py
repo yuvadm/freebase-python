@@ -330,12 +330,8 @@ def cmd_shell(fb):
     graphs = {
         'http://trunk.qa.metaweb.com':'qa',
         'http://branch.qa.metaweb.com':'qa',
-        'http://www.freebase.com':'otg',
         'http://api.freebase.com':'otg',
-        'http://freebase.com':'otg',
-        'http://www.sandbox-freebase.com':'sandbox',
         'http://api.sandbox-freebase.com':'sandbox',
-        'http://sandbox-freebase.com':'sandbox'
     }
 
     gname = graphs.get(fb.mss.service_url, 'unknown')
